@@ -6,9 +6,7 @@ description: |-
 
 # Coval Provider
 
-The Coval provider manages configuration through Coval's public `/v1` API. It
-can manage test sets and their test cases, retrieve either resource by ID, and
-list resources visible to the configured API key.
+The Coval provider manages configuration resources through Coval's public `/v1` API.
 
 ## Requirements
 
