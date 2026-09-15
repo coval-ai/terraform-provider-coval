@@ -1,0 +1,124 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: Provider Release
+    permissions:
+      contents: write
+      id-token: write
+    concurrency:
+      group: terraform-provider-coval-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # GoReleaser uses the tag history when preparing the release.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "${GITHUB_REF_NAME}" =~ ${semver_pattern} ]]; then
+            echo "Release tags must be complete semantic versions prefixed with v." >&2
+            exit 1
+          fi
+          version_without_prefix="${GITHUB_REF_NAME#v}"
+          if [[ "${version_without_prefix}" == *-* ]]; then
+            prerelease="${version_without_prefix#*-}"
+            prerelease="${prerelease%%+*}"
+            IFS='.' read -r -a prerelease_identifiers <<< "${prerelease}"
+            for identifier in "${prerelease_identifiers[@]}"; do
+              if [[ "${identifier}" =~ ^[0-9]+$ && "${identifier}" != "0" && "${identifier}" == 0* ]]; then
+                echo "Numeric prerelease identifiers must not contain leading zeroes." >&2
+                exit 1
+              fi
+            done
+          fi
+
+          if [[ "${GITHUB_SHA}" != "$(git rev-parse origin/main)" ]]; then
+            echo "Release tags must point at the current main commit." >&2
+            exit 1
+          fi
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          version: v2.18.1
+          install-only: true
+      - name: Configure AWS credentials
+        id: aws_credentials
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          aws-region: ${{ vars.AWS_RELEASE_REGION }}
+          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
+          role-duration-seconds: 900
+          role-session-name: terraform-provider-coval-${{ github.run_id }}
+          allowed-account-ids: ${{ secrets.AWS_RELEASE_ACCOUNT_ID }}
+          mask-aws-account-id: true
+          output-credentials: true
+          output-env-credentials: false
+      - name: Build and publish signed release
+        env:
+          AWS_ACCESS_KEY_ID: ${{ steps.aws_credentials.outputs.aws-access-key-id }}
+          AWS_DEFAULT_REGION: ${{ vars.AWS_RELEASE_REGION }}
+          AWS_REGION: ${{ vars.AWS_RELEASE_REGION }}
+          AWS_SECRET_ACCESS_KEY: ${{ steps.aws_credentials.outputs.aws-secret-access-key }}
+          AWS_SESSION_TOKEN: ${{ steps.aws_credentials.outputs.aws-session-token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_EXPECTED_FINGERPRINT: ${{ vars.GPG_RELEASE_FINGERPRINT }}
+          GPG_PRIVATE_KEY_SECRET_ID: ${{ secrets.AWS_RELEASE_SIGNING_PRIVATE_KEY_SECRET_ID }}
+          GPG_PASSPHRASE_SECRET_ID: ${{ secrets.AWS_RELEASE_SIGNING_PASSPHRASE_SECRET_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+
+          signing_directory="$(mktemp -d "${RUNNER_TEMP}/terraform-provider-coval-signing.XXXXXX")"
+          private_key_file="${signing_directory}/private-key.asc"
+          passphrase_file="${signing_directory}/passphrase"
+          export GNUPGHOME="${signing_directory}/gnupg"
+          trap 'rm -rf -- "${signing_directory}"' EXIT
+
+          mkdir -m 700 "${GNUPGHOME}"
+          aws secretsmanager get-secret-value \
+            --secret-id "${GPG_PRIVATE_KEY_SECRET_ID}" \
+            --query SecretString \
+            --output text \
+            --no-cli-pager > "${private_key_file}"
+          aws secretsmanager get-secret-value \
+            --secret-id "${GPG_PASSPHRASE_SECRET_ID}" \
+            --query SecretString \
+            --output text \
+            --no-cli-pager > "${passphrase_file}"
+          unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_SECURITY_TOKEN
+
+          gpg --batch --quiet --import "${private_key_file}"
+          GPG_FINGERPRINT="$(
+            gpg --batch --with-colons --list-secret-keys |
+              awk -F: '$1 == "fpr" && fingerprint == "" { fingerprint = $10 } END { print fingerprint }'
+          )"
+          if [[ -z "${GPG_FINGERPRINT}" ]]; then
+            echo "The release signing secret did not contain an importable private key." >&2
+            exit 1
+          fi
+          if [[ "${GPG_FINGERPRINT}" != "${GPG_EXPECTED_FINGERPRINT}" ]]; then
+            echo "The imported release key did not match the expected fingerprint." >&2
+            exit 1
+          fi
+
+          export GPG_FINGERPRINT
+          export GPG_PASSPHRASE_FILE="${passphrase_file}"
+          goreleaser release --clean

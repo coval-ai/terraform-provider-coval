@@ -1,0 +1,32 @@
+---
+page_title: "Provider: Coval"
+description: |-
+  Manage Coval configuration resources through the public API.
+---
+
+# Coval Provider
+
+The Coval provider manages configuration through Coval's public `/v1` API.
+Managed resources and data sources are added incrementally from that public
+contract.
+
+## Requirements
+
+- Terraform 1.12 or later.
+- A Coval API key with access to the organization Terraform will manage.
+
+## Authentication
+
+Set `COVAL_API_KEY` in the environment running Terraform. You can instead set
+`api_key` in the provider configuration, but environment variables keep the
+credential out of configuration files.
+
+The provider connects to `https://api.coval.dev/v1` by default. The
+`api_base_url` argument and `COVAL_API_BASE_URL` environment variable are for
+development and testing against another Coval API deployment.
+
+## Example Usage
+
+{{ tffile "examples/provider/provider.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
