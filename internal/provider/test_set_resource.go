@@ -304,6 +304,14 @@ func stringSet(ctx context.Context, value types.Set) (*[]string, diag.Diagnostic
 }
 
 func testSetResourceState(ctx context.Context, remote client.TestSet, prior *testSetResourceModel) (testSetResourceModel, diag.Diagnostics) {
+	return testSetState(ctx, remote, prior, types.StringValue(""))
+}
+
+func testSetDataSourceState(ctx context.Context, remote client.TestSet) (testSetResourceModel, diag.Diagnostics) {
+	return testSetState(ctx, remote, nil, types.StringNull())
+}
+
+func testSetState(ctx context.Context, remote client.TestSet, prior *testSetResourceModel, descriptionWhenNull types.String) (testSetResourceModel, diag.Diagnostics) {
 	var diagnostics diag.Diagnostics
 	var metadata types.Dynamic
 	var parameters types.Dynamic
@@ -332,7 +340,7 @@ func testSetResourceState(ctx context.Context, remote client.TestSet, prior *tes
 		Name:            types.StringValue(remote.Name),
 		Slug:            types.StringValue(remote.Slug),
 		DisplayName:     types.StringValue(remote.DisplayName),
-		Description:     types.StringValue(""),
+		Description:     descriptionWhenNull,
 		TestSetType:     types.StringNull(),
 		TestSetMetadata: metadata,
 		Parameters:      parameters,

@@ -110,7 +110,7 @@ func (d *testSetDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		resp.Diagnostics.AddError("Unable to read Coval test set", err.Error())
 		return
 	}
-	state, diagnostics := testSetResourceState(ctx, remote, nil)
+	state, diagnostics := testSetDataSourceState(ctx, remote)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

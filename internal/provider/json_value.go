@@ -197,8 +197,13 @@ func dynamicFromJSONArray(raw json.RawMessage) (types.Dynamic, error) {
 func dynamicFromJSONArrayPreserving(raw json.RawMessage, prior types.Dynamic) (types.Dynamic, error) {
 	if !prior.IsNull() && !prior.IsUnknown() && !prior.IsUnderlyingValueUnknown() {
 		priorRaw, err := dynamicJSONArray(prior)
-		if err == nil && priorRaw != nil && jsonValuesEqual(*priorRaw, raw) {
-			return prior, nil
+		if err == nil && priorRaw != nil {
+			if jsonValuesEqual(*priorRaw, raw) {
+				return prior, nil
+			}
+			if (len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null"))) && jsonValuesEqual(*priorRaw, json.RawMessage(`[]`)) {
+				return prior, nil
+			}
 		}
 	}
 	return dynamicFromJSONArray(raw)

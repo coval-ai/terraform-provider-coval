@@ -138,3 +138,21 @@ func TestDynamicFromJSONArrayPreservesNull(t *testing.T) {
 		t.Errorf("value = %s, want null", value)
 	}
 }
+
+func TestDynamicFromJSONArrayPreservesConfiguredEmptyTupleWhenResponseIsNull(t *testing.T) {
+	t.Parallel()
+
+	emptyTuple, diagnostics := types.TupleValue([]attr.Type{}, []attr.Value{})
+	if diagnostics.HasError() {
+		t.Fatalf("create empty tuple: %v", diagnostics)
+	}
+	prior := types.DynamicValue(emptyTuple)
+
+	value, err := dynamicFromJSONArrayPreserving(json.RawMessage(`null`), prior)
+	if err != nil {
+		t.Fatalf("dynamicFromJSONArrayPreserving(): %v", err)
+	}
+	if !value.Equal(prior) {
+		t.Errorf("value = %s, want preserved %s", value, prior)
+	}
+}
