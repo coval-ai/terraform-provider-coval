@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
+	frameworkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
 	frameworkprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	providerschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	frameworkresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -122,11 +124,37 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 	t.Parallel()
 
 	provider := &CovalProvider{}
-	if resources := provider.Resources(context.Background()); len(resources) != 0 {
-		t.Fatalf("Resources() returned %d entries, want 0", len(resources))
+	resources := provider.Resources(context.Background())
+	if len(resources) != 2 {
+		t.Fatalf("Resources() returned %d entries, want 2", len(resources))
 	}
-	if dataSources := provider.DataSources(context.Background()); len(dataSources) != 0 {
-		t.Fatalf("DataSources() returned %d entries, want 0", len(dataSources))
+	wantResources := map[string]bool{"coval_test_set": true, "coval_test_case": true}
+	for _, factory := range resources {
+		var response frameworkresource.MetadataResponse
+		factory().Metadata(context.Background(), frameworkresource.MetadataRequest{ProviderTypeName: "coval"}, &response)
+		delete(wantResources, response.TypeName)
+	}
+	if len(wantResources) != 0 {
+		t.Fatalf("Resources() is missing %v", wantResources)
+	}
+
+	dataSources := provider.DataSources(context.Background())
+	if len(dataSources) != 4 {
+		t.Fatalf("DataSources() returned %d entries, want 4", len(dataSources))
+	}
+	wantDataSources := map[string]bool{
+		"coval_test_set":   true,
+		"coval_test_sets":  true,
+		"coval_test_case":  true,
+		"coval_test_cases": true,
+	}
+	for _, factory := range dataSources {
+		var response frameworkdatasource.MetadataResponse
+		factory().Metadata(context.Background(), frameworkdatasource.MetadataRequest{ProviderTypeName: "coval"}, &response)
+		delete(wantDataSources, response.TypeName)
+	}
+	if len(wantDataSources) != 0 {
+		t.Fatalf("DataSources() is missing %v", wantDataSources)
 	}
 }
 

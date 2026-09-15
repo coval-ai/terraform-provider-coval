@@ -2,7 +2,10 @@
 
 A Terraform provider for managing Coval configuration through the public `/v1` API with a customer API key.
 
-This initial foundation provides authenticated configuration, a shared Coval API client, generated provider documentation, continuous integration, and signed release automation. Managed resources and data sources will be added incrementally from the public API contract.
+The provider can manage test sets and their test cases, look up either resource
+by ID, and list the resources visible to the configured API key. Additional
+resources and data sources will be added incrementally from the public API
+contract.
 
 ## Design
 
@@ -20,6 +23,25 @@ Set a Coval API key in the provider block or through `COVAL_API_KEY`. The provid
 ```terraform
 provider "coval" {
   api_key = var.coval_api_key
+}
+```
+
+Test cases belong to test sets, so configurations normally declare the two
+resources together:
+
+```terraform
+resource "coval_test_set" "regression" {
+  display_name = "Regression"
+}
+
+resource "coval_test_case" "refund_policy" {
+  test_set_id = coval_test_set.regression.id
+  input_str   = "Ask whether an item purchased three weeks ago can be returned."
+
+  expected_behaviors = [
+    "Explain the return policy",
+    "Offer to begin the return process",
+  ]
 }
 ```
 

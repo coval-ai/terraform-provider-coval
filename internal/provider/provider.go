@@ -125,11 +125,19 @@ func configuredValue(value types.String, environmentVariable string, fallback st
 }
 
 func (p *CovalProvider) Resources(context.Context) []func() resource.Resource {
-	return nil
+	return []func() resource.Resource{
+		newTestSetResource,
+		newTestCaseResource,
+	}
 }
 
 func (p *CovalProvider) DataSources(context.Context) []func() datasource.DataSource {
-	return nil
+	return []func() datasource.DataSource{
+		newTestSetDataSource,
+		newTestSetsDataSource,
+		newTestCaseDataSource,
+		newTestCasesDataSource,
+	}
 }
 
 func New(version string) func() provider.Provider {
