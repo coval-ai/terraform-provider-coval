@@ -215,12 +215,12 @@ func validateTestCaseScriptConfig(config testCaseResourceModel) diag.Diagnostics
 		)
 		return diagnostics
 	}
-	raw, err := dynamicJSONArray(config.ScriptTurns)
+	length, err := dynamicJSONArrayLength(config.ScriptTurns)
 	if err != nil {
 		diagnostics.AddAttributeError(path.Root("script_turns"), "Invalid script turns", err.Error())
 		return diagnostics
 	}
-	if raw != nil && string(*raw) == "[]" {
+	if length == 0 {
 		diagnostics.AddAttributeError(
 			path.Root("script_turns"),
 			"Empty script turns",

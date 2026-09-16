@@ -66,6 +66,32 @@ func TestDynamicJSONObjectRejectsUnknownNestedValue(t *testing.T) {
 	}
 }
 
+func TestDynamicJSONObjectHasKeyDoesNotRequireKnownValues(t *testing.T) {
+	t.Parallel()
+
+	value, diagnostics := types.ObjectValue(
+		map[string]attr.Type{
+			"generated_url": types.StringType,
+			"script_turns":  types.StringType,
+		},
+		map[string]attr.Value{
+			"generated_url": types.StringUnknown(),
+			"script_turns":  types.StringUnknown(),
+		},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create object: %v", diagnostics)
+	}
+
+	hasKey, err := dynamicJSONObjectHasKey(types.DynamicValue(value), "script_turns")
+	if err != nil {
+		t.Fatalf("dynamicJSONObjectHasKey(): %v", err)
+	}
+	if !hasKey {
+		t.Error("dynamicJSONObjectHasKey() = false, want true")
+	}
+}
+
 func TestDynamicJSONObjectPreservesEquivalentTerraformType(t *testing.T) {
 	t.Parallel()
 	value, diagnostics := types.MapValue(
@@ -140,6 +166,26 @@ func TestDynamicJSONArrayRejectsNonArray(t *testing.T) {
 	_, err := dynamicJSONArray(types.DynamicValue(types.StringValue("not-an-array")))
 	if err == nil {
 		t.Fatal("dynamicJSONArray() accepted a string")
+	}
+}
+
+func TestDynamicJSONArrayLengthDoesNotRequireKnownElements(t *testing.T) {
+	t.Parallel()
+
+	value, diagnostics := types.TupleValue(
+		[]attr.Type{types.StringType},
+		[]attr.Value{types.StringUnknown()},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create tuple: %v", diagnostics)
+	}
+
+	length, err := dynamicJSONArrayLength(types.DynamicValue(value))
+	if err != nil {
+		t.Fatalf("dynamicJSONArrayLength(): %v", err)
+	}
+	if length != 1 {
+		t.Errorf("dynamicJSONArrayLength() = %d, want 1", length)
 	}
 }
 

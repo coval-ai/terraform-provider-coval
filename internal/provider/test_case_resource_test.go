@@ -109,6 +109,20 @@ func TestValidateTestCaseScriptConfig(t *testing.T) {
 	if diagnostics.HasError() {
 		t.Fatalf("create legacy simulation metadata: %v", diagnostics)
 	}
+	metadataWithUnknownValue, diagnostics := types.ObjectValue(
+		map[string]attr.Type{"generated_url": types.StringType},
+		map[string]attr.Value{"generated_url": types.StringUnknown()},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create simulation metadata with unknown value: %v", diagnostics)
+	}
+	turnsWithUnknownValue, diagnostics := types.TupleValue(
+		[]attr.Type{types.StringType},
+		[]attr.Value{types.StringUnknown()},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create script turns with unknown value: %v", diagnostics)
+	}
 
 	tests := map[string]struct {
 		config    testCaseResourceModel
@@ -154,6 +168,19 @@ func TestValidateTestCaseScriptConfig(t *testing.T) {
 				SimulationMetadata: types.DynamicValue(legacySimulationMetadata),
 			},
 			wantError: true,
+		},
+		"metadata with resource-derived value": {
+			config: testCaseResourceModel{
+				InputType:          types.StringValue("SCENARIO"),
+				ScriptTurns:        types.DynamicNull(),
+				SimulationMetadata: types.DynamicValue(metadataWithUnknownValue),
+			},
+		},
+		"script turns with resource-derived value": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCRIPT"),
+				ScriptTurns: types.DynamicValue(turnsWithUnknownValue),
+			},
 		},
 	}
 

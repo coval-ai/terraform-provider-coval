@@ -44,16 +44,20 @@ func dynamicJSONObject(value types.Dynamic) (*json.RawMessage, error) {
 }
 
 func dynamicJSONObjectHasKey(value types.Dynamic, key string) (bool, error) {
-	raw, err := dynamicJSONObject(value)
-	if err != nil || raw == nil {
-		return false, err
+	if value.IsNull() || value.IsUnknown() || value.IsUnderlyingValueUnknown() {
+		return false, nil
 	}
-	var object map[string]json.RawMessage
-	if err := json.Unmarshal(*raw, &object); err != nil {
-		return false, fmt.Errorf("decode JSON object: %w", err)
+
+	switch object := value.UnderlyingValue().(type) {
+	case types.Map:
+		_, ok := object.Elements()[key]
+		return ok, nil
+	case types.Object:
+		_, ok := object.Attributes()[key]
+		return ok, nil
+	default:
+		return false, fmt.Errorf("value must be an object, got %T", value.UnderlyingValue())
 	}
-	_, ok := object[key]
-	return ok, nil
 }
 
 func jsonObjectWithoutKey(raw json.RawMessage, key string) (json.RawMessage, error) {
@@ -100,6 +104,21 @@ func dynamicJSONArray(value types.Dynamic) (*json.RawMessage, error) {
 	}
 	raw := json.RawMessage(encoded)
 	return &raw, nil
+}
+
+func dynamicJSONArrayLength(value types.Dynamic) (int, error) {
+	if value.IsNull() || value.IsUnknown() || value.IsUnderlyingValueUnknown() {
+		return 0, nil
+	}
+
+	switch array := value.UnderlyingValue().(type) {
+	case types.List:
+		return len(array.Elements()), nil
+	case types.Tuple:
+		return len(array.Elements()), nil
+	default:
+		return 0, fmt.Errorf("value must be an array, got %T", value.UnderlyingValue())
+	}
 }
 
 func terraformValueToJSON(value attr.Value) (any, error) {
