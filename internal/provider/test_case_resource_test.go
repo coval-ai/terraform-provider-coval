@@ -4,14 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/dynamicplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -65,6 +68,130 @@ func TestTestCaseResourceCollectionAttributesUseStateForUnknown(t *testing.T) {
 	}
 }
 
+func TestTestCaseResourceInputTypeMatchesPublicContract(t *testing.T) {
+	t.Parallel()
+
+	var response resource.SchemaResponse
+	newTestCaseResource().Schema(context.Background(), resource.SchemaRequest{}, &response)
+	attribute, ok := response.Schema.Attributes["input_type"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("input_type has type %T, want schema.StringAttribute", response.Schema.Attributes["input_type"])
+	}
+
+	for _, value := range []string{"CUSTOM", strings.Repeat("x", 200)} {
+		if diagnostics := validateString(t.Context(), attribute.Validators, value); diagnostics.HasError() {
+			t.Errorf("input_type %q was rejected: %v", value, diagnostics)
+		}
+	}
+	if diagnostics := validateString(t.Context(), attribute.Validators, strings.Repeat("x", 201)); !diagnostics.HasError() {
+		t.Error("input_type longer than 200 characters was accepted")
+	}
+}
+
+func TestValidateTestCaseScriptConfig(t *testing.T) {
+	t.Parallel()
+
+	nonEmptyTuple, diagnostics := types.TupleValue(
+		[]attr.Type{types.StringType},
+		[]attr.Value{types.StringValue("Hello")},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create non-empty script turns: %v", diagnostics)
+	}
+	emptyTuple, diagnostics := types.TupleValue([]attr.Type{}, []attr.Value{})
+	if diagnostics.HasError() {
+		t.Fatalf("create empty script turns: %v", diagnostics)
+	}
+
+	tests := map[string]struct {
+		config    testCaseResourceModel
+		wantError bool
+	}{
+		"SCRIPT with turns": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCRIPT"),
+				ScriptTurns: types.DynamicValue(nonEmptyTuple),
+			},
+		},
+		"SCRIPT without turns": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCRIPT"),
+				ScriptTurns: types.DynamicNull(),
+			},
+			wantError: true,
+		},
+		"SCRIPT with empty turns": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCRIPT"),
+				ScriptTurns: types.DynamicValue(emptyTuple),
+			},
+			wantError: true,
+		},
+		"non-SCRIPT without turns": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCENARIO"),
+				ScriptTurns: types.DynamicNull(),
+			},
+		},
+		"non-SCRIPT with turns": {
+			config: testCaseResourceModel{
+				InputType:   types.StringValue("SCENARIO"),
+				ScriptTurns: types.DynamicValue(nonEmptyTuple),
+			},
+			wantError: true,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			diagnostics := validateTestCaseScriptConfig(test.config)
+			if got := diagnostics.HasError(); got != test.wantError {
+				t.Errorf("HasError() = %t, want %t: %v", got, test.wantError, diagnostics)
+			}
+		})
+	}
+}
+
+func TestTestCasePlanClearsUnconfiguredTurnsForNonScriptInput(t *testing.T) {
+	t.Parallel()
+
+	turnsTuple, diagnostics := types.TupleValue(
+		[]attr.Type{types.StringType},
+		[]attr.Value{types.StringValue("Hello")},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create script turns: %v", diagnostics)
+	}
+	turns := types.DynamicValue(turnsTuple)
+	config := testCaseResourceModel{ScriptTurns: types.DynamicNull()}
+
+	nonScriptPlan := testCasePlanForConfig(config, testCaseResourceModel{
+		InputType:   types.StringValue("SCENARIO"),
+		ScriptTurns: turns,
+	})
+	if !nonScriptPlan.ScriptTurns.IsNull() {
+		t.Errorf("non-SCRIPT script_turns = %s, want null", nonScriptPlan.ScriptTurns)
+	}
+
+	scriptPlan := testCasePlanForConfig(config, testCaseResourceModel{
+		InputType:   types.StringValue("SCRIPT"),
+		ScriptTurns: turns,
+	})
+	if !scriptPlan.ScriptTurns.Equal(turns) {
+		t.Errorf("SCRIPT script_turns = %s, want %s", scriptPlan.ScriptTurns, turns)
+	}
+}
+
+func validateString(ctx context.Context, validators []validator.String, value string) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	for _, item := range validators {
+		var response validator.StringResponse
+		item.ValidateString(ctx, validator.StringRequest{ConfigValue: types.StringValue(value)}, &response)
+		diagnostics.Append(response.Diagnostics...)
+	}
+	return diagnostics
+}
+
 func TestTestCaseResourceStateMapsPublicAPIResponse(t *testing.T) {
 	t.Parallel()
 
@@ -83,7 +210,7 @@ func TestTestCaseResourceStateMapsPublicAPIResponse(t *testing.T) {
 		ExpectedOutputJSON: json.RawMessage(`{"eligible":true}`),
 		Description:        &description,
 		InputType:          &inputType,
-		ScriptTurns:        json.RawMessage(`[{"role":"user","content":"Hello"}]`),
+		ScriptTurns:        json.RawMessage(`[{"type":"text","text":"Hello"}]`),
 		SimulationMetadata: json.RawMessage(`{"channel":"voice"}`),
 		MetricInput:        json.RawMessage(`{"policy_window_days":30}`),
 		UserNotes:          &userNotes,

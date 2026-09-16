@@ -20,10 +20,12 @@ import (
 )
 
 var (
-	_ resource.Resource                = &testCaseResource{}
-	_ resource.ResourceWithConfigure   = &testCaseResource{}
-	_ resource.ResourceWithImportState = &testCaseResource{}
-	_ resource.ResourceWithIdentity    = &testCaseResource{}
+	_ resource.Resource                   = &testCaseResource{}
+	_ resource.ResourceWithConfigure      = &testCaseResource{}
+	_ resource.ResourceWithImportState    = &testCaseResource{}
+	_ resource.ResourceWithIdentity       = &testCaseResource{}
+	_ resource.ResourceWithModifyPlan     = &testCaseResource{}
+	_ resource.ResourceWithValidateConfig = &testCaseResource{}
 )
 
 type testCaseResource struct {
@@ -103,16 +105,14 @@ func (r *testCaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
 			"input_type": schema.StringAttribute{
-				MarkdownDescription: "Input type, such as SCENARIO, TRANSCRIPT, IVR, AUDIO, MANUAL, or SCRIPT.",
+				MarkdownDescription: "Input type. SCRIPT requires a non-empty script_turns value; changing to another type clears script_turns.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				Validators: []validator.String{stringvalidator.OneOf(
-					"SCENARIO", "TRANSCRIPT", "IVR", "AUDIO", "MANUAL", "SCRIPT",
-				)},
+				Validators:          []validator.String{stringvalidator.LengthAtMost(200)},
 			},
 			"script_turns": schema.DynamicAttribute{
-				MarkdownDescription: "Ordered JSON array of persona turns used by SCRIPT test cases. Set [] to clear it.",
+				MarkdownDescription: "Non-empty ordered JSON array required for SCRIPT test cases. Each turn is a string, a text object, a DTMF object, or a skip object. Omit it for other input types.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()},
@@ -166,6 +166,80 @@ func (r *testCaseResource) Configure(_ context.Context, req resource.ConfigureRe
 		return
 	}
 	r.client = apiClient
+}
+
+func (r *testCaseResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config testCaseResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateTestCaseScriptConfig(config)...)
+}
+
+func validateTestCaseScriptConfig(config testCaseResourceModel) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	if config.InputType.IsUnknown() || config.ScriptTurns.IsUnknown() || config.ScriptTurns.IsUnderlyingValueUnknown() {
+		return diagnostics
+	}
+
+	hasScriptTurns := !config.ScriptTurns.IsNull()
+	if config.InputType.IsNull() || config.InputType.ValueString() != "SCRIPT" {
+		if hasScriptTurns {
+			diagnostics.AddAttributeError(
+				path.Root("script_turns"),
+				"Invalid script turns",
+				"script_turns must be omitted unless input_type is SCRIPT.",
+			)
+		}
+		return diagnostics
+	}
+
+	if !hasScriptTurns {
+		diagnostics.AddAttributeError(
+			path.Root("script_turns"),
+			"Missing script turns",
+			"script_turns must be a non-empty array when input_type is SCRIPT.",
+		)
+		return diagnostics
+	}
+	raw, err := dynamicJSONArray(config.ScriptTurns)
+	if err != nil {
+		diagnostics.AddAttributeError(path.Root("script_turns"), "Invalid script turns", err.Error())
+		return diagnostics
+	}
+	if raw != nil && string(*raw) == "[]" {
+		diagnostics.AddAttributeError(
+			path.Root("script_turns"),
+			"Empty script turns",
+			"script_turns must be a non-empty array when input_type is SCRIPT.",
+		)
+	}
+	return diagnostics
+}
+
+func (r *testCaseResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	var config testCaseResourceModel
+	var plan testCaseResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	plan = testCasePlanForConfig(config, plan)
+	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+}
+
+func testCasePlanForConfig(config testCaseResourceModel, plan testCaseResourceModel) testCaseResourceModel {
+	if config.ScriptTurns.IsNull() && !plan.InputType.IsNull() && !plan.InputType.IsUnknown() && plan.InputType.ValueString() != "SCRIPT" {
+		plan.ScriptTurns = types.DynamicNull()
+	}
+	return plan
 }
 
 func (r *testCaseResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {

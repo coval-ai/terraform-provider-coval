@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/dynamicplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -32,6 +36,54 @@ func TestTestSetResourceDynamicAttributesUseStateForUnknown(t *testing.T) {
 			t.Errorf("%s plan modifier has type %v, want %v", name, got, wantModifierType)
 		}
 	}
+}
+
+func TestTestSetResourceValidatesPublicSlugAndTagConstraints(t *testing.T) {
+	t.Parallel()
+
+	var response resource.SchemaResponse
+	newTestSetResource().Schema(context.Background(), resource.SchemaRequest{}, &response)
+
+	slug, ok := response.Schema.Attributes["slug"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("slug has type %T, want schema.StringAttribute", response.Schema.Attributes["slug"])
+	}
+	if diagnostics := validateString(t.Context(), slug.Validators, "provider_tests-1"); diagnostics.HasError() {
+		t.Errorf("valid slug was rejected: %v", diagnostics)
+	}
+	for _, value := range []string{"", "Provider-Test"} {
+		if diagnostics := validateString(t.Context(), slug.Validators, value); !diagnostics.HasError() {
+			t.Errorf("invalid slug %q was accepted", value)
+		}
+	}
+
+	tags, ok := response.Schema.Attributes["tags"].(schema.SetAttribute)
+	if !ok {
+		t.Fatalf("tags has type %T, want schema.SetAttribute", response.Schema.Attributes["tags"])
+	}
+	validTags := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("ci")})
+	if diagnostics := validateSet(t.Context(), tags.Validators, validTags); diagnostics.HasError() {
+		t.Errorf("valid tags were rejected: %v", diagnostics)
+	}
+	invalidTags := []types.Set{
+		types.SetValueMust(types.StringType, []attr.Value{types.StringValue("   ")}),
+		types.SetValueMust(types.StringType, []attr.Value{types.StringValue(strings.Repeat("x", 201))}),
+	}
+	for _, value := range invalidTags {
+		if diagnostics := validateSet(t.Context(), tags.Validators, value); !diagnostics.HasError() {
+			t.Errorf("invalid tags %s were accepted", value)
+		}
+	}
+}
+
+func validateSet(ctx context.Context, validators []validator.Set, value types.Set) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	for _, item := range validators {
+		var response validator.SetResponse
+		item.ValidateSet(ctx, validator.SetRequest{ConfigValue: value}, &response)
+		diagnostics.Append(response.Diagnostics...)
+	}
+	return diagnostics
 }
 
 func TestTestSetResourceStateMapsPublicAPIResponse(t *testing.T) {

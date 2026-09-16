@@ -3,8 +3,10 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -77,7 +79,13 @@ func (r *testSetResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-				Validators:          []validator.String{stringvalidator.LengthAtMost(100)},
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(1, 100),
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^[a-z0-9_-]+$`),
+						"must contain only lowercase letters, numbers, dashes, and underscores",
+					),
+				},
 			},
 			"display_name": schema.StringAttribute{
 				MarkdownDescription: "Human-readable test-set name.",
@@ -119,6 +127,7 @@ func (r *testSetResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+				Validators:          testSetTagValidators(),
 			},
 			"create_time": schema.StringAttribute{
 				MarkdownDescription: "RFC 3339 creation timestamp.",
@@ -130,6 +139,16 @@ func (r *testSetResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 			},
 		},
+	}
+}
+
+func testSetTagValidators() []validator.Set {
+	return []validator.Set{
+		setvalidator.SizeAtMost(20),
+		setvalidator.ValueStringsAre(
+			stringvalidator.LengthAtMost(200),
+			stringvalidator.RegexMatches(regexp.MustCompile(`\S`), "must contain at least one non-whitespace character"),
+		),
 	}
 }
 

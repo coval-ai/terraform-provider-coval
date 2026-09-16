@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // TestSet is the Coval public API representation of a test set.
@@ -113,8 +114,8 @@ func (c *Client) ListTestSets(ctx context.Context, options ListTestSetsOptions) 
 	if options.OrderBy != "" {
 		query.Set("order_by", options.OrderBy)
 	}
-	for _, tag := range options.TagFilters {
-		query.Add("tag_filters", tag)
+	if len(options.TagFilters) > 0 {
+		query.Set("tag_filters", strings.Join(options.TagFilters, ","))
 	}
 
 	requestPath := "test-sets"

@@ -5,10 +5,8 @@ import (
 	"fmt"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
-	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -65,7 +63,7 @@ func (d *testSetsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 				MarkdownDescription: "Optional tags that every returned test set must have.",
 				ElementType:         types.StringType,
 				Optional:            true,
-				Validators:          []validator.Set{setvalidator.SizeAtMost(20)},
+				Validators:          testSetTagValidators(),
 			},
 			"test_sets": schema.ListNestedAttribute{
 				MarkdownDescription: "All matching test sets.",

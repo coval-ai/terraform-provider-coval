@@ -122,7 +122,7 @@ func TestListTestSetsEncodesOptions(t *testing.T) {
 		if query.Get("filter") != `display_name="Provider test"` || query.Get("page_size") != "100" || query.Get("page_token") != "next" || query.Get("order_by") != "-create_time" {
 			t.Errorf("query = %v", query)
 		}
-		if got := query["tag_filters"]; !reflect.DeepEqual(got, []string{"ci", "terraform"}) {
+		if got := query["tag_filters"]; !reflect.DeepEqual(got, []string{"ci,terraform"}) {
 			t.Errorf("tag_filters = %#v", got)
 		}
 		return testResponse(http.StatusOK, `{"test_sets":[],"next_page_token":""}`, nil), nil

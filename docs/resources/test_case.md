@@ -50,9 +50,9 @@ resource "coval_test_case" "refund_policy" {
 - `description` (String) Human-readable test-case description. Set an empty string to clear it.
 - `expected_behaviors` (List of String) Ordered behaviors expected from the agent. Set [] to clear them.
 - `expected_output_json` (Dynamic) Arbitrary JSON object containing the expected structured output. Set {} to clear it.
-- `input_type` (String) Input type, such as SCENARIO, TRANSCRIPT, IVR, AUDIO, MANUAL, or SCRIPT.
+- `input_type` (String) Input type. SCRIPT requires a non-empty script_turns value; changing to another type clears script_turns.
 - `metric_input` (Dynamic) Arbitrary JSON object containing metric input data. Set {} to clear it.
-- `script_turns` (Dynamic) Ordered JSON array of persona turns used by SCRIPT test cases. Set [] to clear it.
+- `script_turns` (Dynamic) Non-empty ordered JSON array required for SCRIPT test cases. Each turn is a string, a text object, a DTMF object, or a skip object. Omit it for other input types.
 - `simulation_metadata_input` (Dynamic) Arbitrary JSON object containing simulation metadata. For SCRIPT inputs, use the top-level script_turns attribute instead. Set {} to clear it.
 - `user_notes` (String) User-provided notes about the test case. Set an empty string to clear them.
 
