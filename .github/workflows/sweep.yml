@@ -1,0 +1,32 @@
+name: Acceptance cleanup
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 9 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-provider-coval-acceptance-staging
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Sweep stale staging test sets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: Acceptance Staging
+    env:
+      COVAL_API_KEY: ${{ secrets.COVAL_API_KEY }}
+      COVAL_API_BASE_URL: ${{ vars.COVAL_API_BASE_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+      - run: go mod download
+      - name: Delete stale provider acceptance fixtures
+        run: go test -v ./internal/provider -sweep=staging -sweep-run=coval_test_set
