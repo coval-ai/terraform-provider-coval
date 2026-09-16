@@ -81,6 +81,29 @@ func TestAccTestCaseResource(t *testing.T) {
 	})
 }
 
+func TestAccTestCaseResourceComputedReferences(t *testing.T) {
+	displayName := acctest.RandomWithPrefix(acceptanceTestSetPrefix)
+	resourceName := "coval_test_case.test"
+	testSetResourceName := "coval_test_set.test"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckTestCaseAndTestSetDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccTestCaseComputedReferencesConfig(displayName),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttrPair(resourceName, "test_set_id", testSetResourceName, "id"),
+					resource.TestCheckResourceAttr(resourceName, "input_type", "SCRIPT"),
+					resource.TestCheckResourceAttrPair(resourceName, "script_turns.0", testSetResourceName, "name"),
+					resource.TestCheckResourceAttrPair(resourceName, "simulation_metadata_input.test_set_name", testSetResourceName, "name"),
+				),
+			},
+		},
+	})
+}
+
 func testAccCheckTestCaseAndTestSetDestroy(state *terraform.State) error {
 	apiClient, err := acceptanceAPIClient()
 	if err != nil {
@@ -241,4 +264,28 @@ data "coval_test_cases" "matching" {
 		strconv.Quote(userNotes),
 		testSetReference,
 	)
+}
+
+func testAccTestCaseComputedReferencesConfig(displayName string) string {
+	return fmt.Sprintf(`
+resource "coval_test_set" "test" {
+  display_name  = %s
+  description   = "Computed-reference acceptance-test parent"
+  test_set_type = "SCRIPT"
+}
+
+resource "coval_test_case" "test" {
+  test_set_id = coval_test_set.test.id
+  input_str   = "Use values computed during this Terraform apply"
+  input_type  = "SCRIPT"
+
+  script_turns = [
+    coval_test_set.test.name,
+  ]
+
+  simulation_metadata_input = {
+    test_set_name = coval_test_set.test.name
+  }
+}
+`, strconv.Quote(displayName))
 }
