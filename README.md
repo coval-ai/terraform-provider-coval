@@ -2,8 +2,6 @@
 
 A Terraform provider for managing Coval configuration through the public `/v1` API with a customer API key.
 
-This initial foundation provides authenticated configuration, a shared Coval API client, generated provider documentation, continuous integration, and signed release automation. Managed resources and data sources will be added incrementally from the public API contract.
-
 ## Design
 
 The provider exposes only configuration resources supported by Coval's public `/v1` API. Every managed resource must support a complete Terraform lifecycle through that public contract; private and administrative APIs are out of scope.
@@ -41,15 +39,11 @@ make generate
 
 ## Releasing
 
-Releases are built by GitHub Actions from semantic-version tags such as
-`v0.1.0`. The release workflow uses GoReleaser to build platform archives,
-include the Terraform Registry protocol manifest, generate SHA-256 checksums,
-and sign those checksums with the provider's GPG release key.
+Releases are built by GitHub Actions from semantic-version tags such as `v0.1.0`. The release workflow uses GoReleaser to build platform archives, include the Terraform Registry protocol manifest, generate SHA-256 checksums, and sign those checksums with the provider's GPG release key.
 
 The release workflow obtains short-lived AWS credentials through GitHub OIDC and loads the GPG private key and passphrase into ephemeral runner files. Signing material is never stored in this repository or in GitHub secrets.
 
-Do not replace the assets of a published version. Merge a changelog entry and
-publish a new semantic version instead.
+Do not replace the assets of a published version. Merge a changelog entry and publish a new semantic version instead.
 
 ## Testing
 

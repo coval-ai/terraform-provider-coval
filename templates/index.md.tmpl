@@ -6,9 +6,7 @@ description: |-
 
 # Coval Provider
 
-The Coval provider manages configuration through Coval's public `/v1` API.
-Managed resources and data sources are added incrementally from that public
-contract.
+The Coval provider manages configuration resources through Coval's public `/v1` API.
 
 ## Requirements
 
