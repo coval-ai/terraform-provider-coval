@@ -102,6 +102,13 @@ func TestValidateTestCaseScriptConfig(t *testing.T) {
 	if diagnostics.HasError() {
 		t.Fatalf("create empty script turns: %v", diagnostics)
 	}
+	legacySimulationMetadata, diagnostics := types.ObjectValue(
+		map[string]attr.Type{"script_turns": nonEmptyTuple.Type(t.Context())},
+		map[string]attr.Value{"script_turns": nonEmptyTuple},
+	)
+	if diagnostics.HasError() {
+		t.Fatalf("create legacy simulation metadata: %v", diagnostics)
+	}
 
 	tests := map[string]struct {
 		config    testCaseResourceModel
@@ -137,6 +144,14 @@ func TestValidateTestCaseScriptConfig(t *testing.T) {
 			config: testCaseResourceModel{
 				InputType:   types.StringValue("SCENARIO"),
 				ScriptTurns: types.DynamicValue(nonEmptyTuple),
+			},
+			wantError: true,
+		},
+		"legacy nested turns": {
+			config: testCaseResourceModel{
+				InputType:          types.StringValue("SCRIPT"),
+				ScriptTurns:        types.DynamicValue(nonEmptyTuple),
+				SimulationMetadata: types.DynamicValue(legacySimulationMetadata),
 			},
 			wantError: true,
 		},
@@ -211,7 +226,7 @@ func TestTestCaseResourceStateMapsPublicAPIResponse(t *testing.T) {
 		Description:        &description,
 		InputType:          &inputType,
 		ScriptTurns:        json.RawMessage(`[{"type":"text","text":"Hello"}]`),
-		SimulationMetadata: json.RawMessage(`{"channel":"voice"}`),
+		SimulationMetadata: json.RawMessage(`{"channel":"voice","script_turns":[{"type":"text","text":"Hello"}]}`),
 		MetricInput:        json.RawMessage(`{"policy_window_days":30}`),
 		UserNotes:          &userNotes,
 		CreateTime:         "2026-09-15T00:00:00Z",
@@ -260,7 +275,7 @@ func TestTestCaseResourceStateMapsPublicAPIResponse(t *testing.T) {
 	}
 	assertDynamicJSONObject(t, "expected_output_json", state.ExpectedOutputJSON, remote.ExpectedOutputJSON)
 	assertDynamicJSONArray(t, "script_turns", state.ScriptTurns, remote.ScriptTurns)
-	assertDynamicJSONObject(t, "simulation_metadata_input", state.SimulationMetadata, remote.SimulationMetadata)
+	assertDynamicJSONObject(t, "simulation_metadata_input", state.SimulationMetadata, json.RawMessage(`{"channel":"voice"}`))
 	assertDynamicJSONObject(t, "metric_input", state.MetricInput, remote.MetricInput)
 }
 

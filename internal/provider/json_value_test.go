@@ -85,6 +85,21 @@ func TestDynamicJSONObjectPreservesEquivalentTerraformType(t *testing.T) {
 	}
 }
 
+func TestJSONObjectWithoutKey(t *testing.T) {
+	t.Parallel()
+
+	result, err := jsonObjectWithoutKey(
+		json.RawMessage(`{"channel":"voice","script_turns":[{"type":"text","text":"Hello"}]}`),
+		"script_turns",
+	)
+	if err != nil {
+		t.Fatalf("jsonObjectWithoutKey(): %v", err)
+	}
+	if want := json.RawMessage(`{"channel":"voice"}`); !jsonValuesEqual(result, want) {
+		t.Errorf("result = %s, want %s", result, want)
+	}
+}
+
 func TestDynamicJSONArrayRoundTrip(t *testing.T) {
 	t.Parallel()
 

@@ -53,7 +53,7 @@ resource "coval_test_case" "refund_policy" {
 - `input_type` (String) Input type. SCRIPT requires a non-empty script_turns value; changing to another type clears script_turns.
 - `metric_input` (Dynamic) Arbitrary JSON object containing metric input data. Set {} to clear it.
 - `script_turns` (Dynamic) Non-empty ordered JSON array required for SCRIPT test cases. Each turn is a string, a text object, a DTMF object, or a skip object. Omit it for other input types.
-- `simulation_metadata_input` (Dynamic) Arbitrary JSON object containing simulation metadata. For SCRIPT inputs, use the top-level script_turns attribute instead. Set {} to clear it.
+- `simulation_metadata_input` (Dynamic) Arbitrary JSON object containing simulation metadata. The legacy nested script_turns key is not supported; use the top-level script_turns attribute instead. Set {} to clear it.
 - `user_notes` (String) User-provided notes about the test case. Set an empty string to clear them.
 
 ### Read-Only

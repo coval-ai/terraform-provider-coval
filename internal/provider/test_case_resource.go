@@ -118,7 +118,7 @@ func (r *testCaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				PlanModifiers:       []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()},
 			},
 			"simulation_metadata_input": schema.DynamicAttribute{
-				MarkdownDescription: "Arbitrary JSON object containing simulation metadata. For SCRIPT inputs, use the top-level script_turns attribute instead. Set {} to clear it.",
+				MarkdownDescription: "Arbitrary JSON object containing simulation metadata. The legacy nested script_turns key is not supported; use the top-level script_turns attribute instead. Set {} to clear it.",
 				Optional:            true,
 				Computed:            true,
 				PlanModifiers:       []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()},
@@ -179,6 +179,18 @@ func (r *testCaseResource) ValidateConfig(ctx context.Context, req resource.Vali
 
 func validateTestCaseScriptConfig(config testCaseResourceModel) diag.Diagnostics {
 	var diagnostics diag.Diagnostics
+	if !config.SimulationMetadata.IsNull() && !config.SimulationMetadata.IsUnknown() && !config.SimulationMetadata.IsUnderlyingValueUnknown() {
+		hasLegacyScriptTurns, err := dynamicJSONObjectHasKey(config.SimulationMetadata, "script_turns")
+		if err != nil {
+			diagnostics.AddAttributeError(path.Root("simulation_metadata_input"), "Invalid simulation metadata", err.Error())
+		} else if hasLegacyScriptTurns {
+			diagnostics.AddAttributeError(
+				path.Root("simulation_metadata_input"),
+				"Legacy nested script turns are not supported",
+				"Move simulation_metadata_input.script_turns to the top-level script_turns attribute.",
+			)
+		}
+	}
 	if config.InputType.IsUnknown() || config.ScriptTurns.IsUnknown() || config.ScriptTurns.IsUnderlyingValueUnknown() {
 		return diagnostics
 	}
@@ -349,6 +361,17 @@ func createTestCaseInput(ctx context.Context, plan testCaseResourceModel) (clien
 	simulationMetadata, err := dynamicJSONObject(plan.SimulationMetadata)
 	if err != nil {
 		diagnostics.AddAttributeError(path.Root("simulation_metadata_input"), "Invalid simulation metadata", err.Error())
+	} else {
+		hasLegacyScriptTurns, keyErr := dynamicJSONObjectHasKey(plan.SimulationMetadata, "script_turns")
+		if keyErr != nil {
+			diagnostics.AddAttributeError(path.Root("simulation_metadata_input"), "Invalid simulation metadata", keyErr.Error())
+		} else if hasLegacyScriptTurns {
+			diagnostics.AddAttributeError(
+				path.Root("simulation_metadata_input"),
+				"Legacy nested script turns are not supported",
+				"Move simulation_metadata_input.script_turns to the top-level script_turns attribute.",
+			)
+		}
 	}
 	metricInput, err := dynamicJSONObject(plan.MetricInput)
 	if err != nil {
@@ -420,12 +443,15 @@ func testCaseResourceState(ctx context.Context, remote client.TestCase, prior *t
 	if err != nil {
 		diagnostics.AddError("Unable to decode test-case script turns", err.Error())
 	}
-	if prior == nil {
-		simulationMetadata, err = dynamicFromJSONObject(remote.SimulationMetadata)
+	simulationMetadataRaw, sanitizeErr := jsonObjectWithoutKey(remote.SimulationMetadata, "script_turns")
+	if sanitizeErr != nil {
+		diagnostics.AddError("Unable to decode test-case simulation metadata", sanitizeErr.Error())
+	} else if prior == nil {
+		simulationMetadata, err = dynamicFromJSONObject(simulationMetadataRaw)
 	} else {
-		simulationMetadata, err = dynamicFromJSONObjectPreserving(remote.SimulationMetadata, prior.SimulationMetadata)
+		simulationMetadata, err = dynamicFromJSONObjectPreserving(simulationMetadataRaw, prior.SimulationMetadata)
 	}
-	if err != nil {
+	if sanitizeErr == nil && err != nil {
 		diagnostics.AddError("Unable to decode test-case simulation metadata", err.Error())
 	}
 	if prior == nil {

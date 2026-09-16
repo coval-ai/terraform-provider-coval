@@ -43,6 +43,35 @@ func dynamicJSONObject(value types.Dynamic) (*json.RawMessage, error) {
 	return &raw, nil
 }
 
+func dynamicJSONObjectHasKey(value types.Dynamic, key string) (bool, error) {
+	raw, err := dynamicJSONObject(value)
+	if err != nil || raw == nil {
+		return false, err
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(*raw, &object); err != nil {
+		return false, fmt.Errorf("decode JSON object: %w", err)
+	}
+	_, ok := object[key]
+	return ok, nil
+}
+
+func jsonObjectWithoutKey(raw json.RawMessage, key string) (json.RawMessage, error) {
+	if len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return raw, nil
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, fmt.Errorf("decode Coval JSON object: %w", err)
+	}
+	delete(object, key)
+	encoded, err := json.Marshal(object)
+	if err != nil {
+		return nil, fmt.Errorf("encode Coval JSON object: %w", err)
+	}
+	return json.RawMessage(encoded), nil
+}
+
 func dynamicJSONArray(value types.Dynamic) (*json.RawMessage, error) {
 	if value.IsNull() {
 		return nil, nil
