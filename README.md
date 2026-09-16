@@ -39,11 +39,19 @@ make generate
 
 ## Releasing
 
-Releases are built by GitHub Actions from semantic-version tags such as `v0.1.0`. The release workflow uses GoReleaser to build platform archives, include the Terraform Registry protocol manifest, generate SHA-256 checksums, and sign those checksums with the provider's GPG release key.
+Pull request titles use [Conventional Commits](https://www.conventionalcommits.org/). Because the repository squash-merges pull requests with their title as the commit subject, each merge to `main` gives the release automation an unambiguous version signal: `fix` produces a patch, `feat` produces a minor, and `!` produces a major.
 
-The release workflow obtains short-lived AWS credentials through GitHub OIDC and loads the GPG private key and passphrase into ephemeral runner files. Signing material is never stored in this repository or in GitHub secrets.
+After a releasable change merges, the `Coval Release Automation` GitHub App determines the next version, updates `CHANGELOG.md`, commits that generated changelog directly to `main`, creates the matching `vX.Y.Z` tag, and opens a draft GitHub Release. Changes that do not affect the public release, such as `chore` or `docs`, do not create a version.
 
-Do not replace the assets of a published version. Merge a changelog entry and publish a new semantic version instead.
+The protected release workflow validates that the tag belongs to a changelog-only release commit in `main` history, then uses GoReleaser to build platform archives, include the Terraform Registry protocol manifest, generate SHA-256 checksums, and sign those checksums with the provider's GPG release key. It obtains short-lived AWS credentials through GitHub OIDC and loads signing material into permission-restricted ephemeral runner files; the private key and passphrase are never stored in this repository or in GitHub secrets.
+
+Run a credential-free snapshot of the complete package layout locally with:
+
+```shell
+make release-snapshot
+```
+
+Do not edit `CHANGELOG.md` manually or replace the assets of a published version. Merge another conventionally titled pull request and let the automation publish a new semantic version instead.
 
 ## Testing
 

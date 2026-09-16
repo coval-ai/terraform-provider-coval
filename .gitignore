@@ -3,6 +3,7 @@
 .DS_Store
 bin/
 dist/
+node_modules/
 .terraform/
 *.tfplan
 *.tfstate

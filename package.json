@@ -1,0 +1,20 @@
+{
+  "name": "terraform-provider-coval-release-tools",
+  "private": true,
+  "description": "Pinned tooling for automated Coval Terraform provider releases.",
+  "engines": {
+    "node": "22.22.3"
+  },
+  "scripts": {
+    "test": "make automation-test && node scripts/release/semantic-release_test.mjs",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "7.0.0",
+    "@semantic-release/exec": "7.1.0",
+    "@semantic-release/git": "11.0.1",
+    "conventional-changelog-conventionalcommits": "9.3.1",
+    "semantic-release": "25.0.9"
+  }
+}

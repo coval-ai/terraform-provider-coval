@@ -16,8 +16,27 @@ permissions:
   contents: read
 
 jobs:
+  title:
+    name: Pull Request Title
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          persist-credentials: false
+      - name: Validate pull request title
+        if: github.event_name == 'pull_request'
+        env:
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        run: ./scripts/ci/validate-pr-title.sh "${PULL_REQUEST_TITLE}"
+      - name: Skip pull request title validation
+        if: github.event_name != 'pull_request'
+        run: echo "No pull request title to validate for ${GITHUB_EVENT_NAME}."
+
   build:
     name: Build
+    needs: title
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -26,6 +45,7 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+      - run: make automation-test
       - run: go mod download
       - run: go build ./...
       - name: Validate release configuration

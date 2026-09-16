@@ -6,8 +6,24 @@ on:
       - 'v*'
 
 jobs:
+  validate:
+    name: Validate Release Tag
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify release tag
+        shell: bash
+        run: ./scripts/release/validate-release-tag.sh
+
   release:
     name: Release
+    needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: Provider Release
@@ -23,33 +39,24 @@ jobs:
           # GoReleaser uses the tag history when preparing the release.
           fetch-depth: 0
           persist-credentials: false
-      - name: Verify release tag
+      - name: Verify draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
 
-          semver_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
-          if [[ ! "${GITHUB_REF_NAME}" =~ ${semver_pattern} ]]; then
-            echo "Release tags must be complete semantic versions prefixed with v." >&2
-            exit 1
-          fi
-          version_without_prefix="${GITHUB_REF_NAME#v}"
-          if [[ "${version_without_prefix}" == *-* ]]; then
-            prerelease="${version_without_prefix#*-}"
-            prerelease="${prerelease%%+*}"
-            IFS='.' read -r -a prerelease_identifiers <<< "${prerelease}"
-            for identifier in "${prerelease_identifiers[@]}"; do
-              if [[ "${identifier}" =~ ^[0-9]+$ && "${identifier}" != "0" && "${identifier}" == 0* ]]; then
-                echo "Numeric prerelease identifiers must not contain leading zeroes." >&2
-                exit 1
-              fi
-            done
-          fi
+          for attempt in {1..6}; do
+            if draft="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" --jq '.draft' 2>/dev/null)" && [[ "${draft}" == 'true' ]]; then
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 6 ]]; then
+              sleep 5
+            fi
+          done
 
-          if [[ "${GITHUB_SHA}" != "$(git rev-parse origin/main)" ]]; then
-            echo "Release tags must point at the current main commit." >&2
-            exit 1
-          fi
+          echo "Release Automation must create a draft release before publication." >&2
+          exit 1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: 'go.mod'
