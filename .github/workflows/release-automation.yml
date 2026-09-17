@@ -1,6 +1,7 @@
 name: Release Automation
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -14,10 +15,17 @@ concurrency:
 jobs:
   release:
     name: Prepare Release
-    if: github.actor != 'coval-release-automation[bot]'
+    if: github.event_name == 'workflow_dispatch' || github.actor != 'coval-release-automation[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - name: Verify release source
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [[ "${GITHUB_REF}" != 'refs/heads/main' ]]; then
+            echo "Release Automation must be dispatched from main." >&2
+            exit 1
+          fi
       - name: Create release automation token
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0

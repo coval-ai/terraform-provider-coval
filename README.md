@@ -43,6 +43,8 @@ Pull request titles use [Conventional Commits](https://www.conventionalcommits.o
 
 After a releasable change merges, the `Coval Release Automation` GitHub App determines the next version, updates `CHANGELOG.md`, commits that generated changelog directly to `main`, creates the matching `vX.Y.Z` tag, and opens a draft GitHub Release. Changes that do not affect the public release, such as `chore` or `docs`, do not create a version.
 
+If an automatic preparation run fails, manually run the `Release Automation` workflow from `main`. It evaluates every commit since the latest release, prepares a version for any unreleased releasable commits, and safely does nothing when the release history is already current.
+
 The protected release workflow validates that the tag belongs to a changelog-only release commit in `main` history, then uses GoReleaser to build platform archives, include the Terraform Registry protocol manifest, generate SHA-256 checksums, and sign those checksums with the provider's GPG release key. It obtains short-lived AWS credentials through GitHub OIDC and loads signing material into permission-restricted ephemeral runner files; the private key and passphrase are never stored in this repository or in GitHub secrets.
 
 Run a credential-free snapshot of the complete package layout locally with:
