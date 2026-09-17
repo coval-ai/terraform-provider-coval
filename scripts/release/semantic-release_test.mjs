@@ -17,6 +17,16 @@ function git(cwd, ...args) {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 }
 
+function testEnvironment() {
+  const environment = { ...process.env };
+  for (const name of Object.keys(environment)) {
+    if (name === "CI" || name.startsWith("GITHUB_")) {
+      delete environment[name];
+    }
+  }
+  return environment;
+}
+
 async function releaseConfig() {
   const config = JSON.parse(await readFile(path.join(repositoryRoot, ".releaserc.json"), "utf8"));
   return {
@@ -45,7 +55,7 @@ try {
   );
   await symlink(path.join(repositoryRoot, "node_modules"), path.join(testRepository, "node_modules"), "dir");
 
-  git(temporaryRoot, "init", "--bare", "--quiet", remoteRepository);
+  git(temporaryRoot, "init", "--bare", "--quiet", "--initial-branch=main", remoteRepository);
   git(testRepository, "init", "--quiet", "--initial-branch=main");
   git(testRepository, "config", "user.name", "Release Test");
   git(testRepository, "config", "user.email", "release-test@example.com");
@@ -55,7 +65,8 @@ try {
   git(testRepository, "commit", "--quiet", "--message", "feat: add the first public resource");
   git(testRepository, "push", "--quiet", "--set-upstream", "origin", "main");
 
-  const result = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: process.env });
+  const environment = testEnvironment();
+  const result = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: environment });
 
   assert.equal(result?.nextRelease.version, "1.0.0");
   assert.equal(git(testRepository, "show", "--no-patch", "--format=%s", "HEAD"), "chore(release): 1.0.0");
@@ -70,7 +81,7 @@ try {
   await commitFile("fix.txt", "fixed\n", "fix: correct provider behavior");
   git(testRepository, "push", "--quiet", "origin", "main");
 
-  const retryResult = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: process.env });
+  const retryResult = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: environment });
   assert.equal(retryResult?.nextRelease.version, "1.0.1");
   assert.equal(git(testRepository, "show", "--no-patch", "--format=%s", "HEAD"), "chore(release): 1.0.1");
   assert.equal(git(testRepository, "tag", "--points-at", "HEAD"), "v1.0.1");
@@ -78,7 +89,7 @@ try {
 
   const releasedHead = git(testRepository, "rev-parse", "HEAD");
   const releasedChangelog = await readFile(path.join(testRepository, "CHANGELOG.md"), "utf8");
-  const noOpResult = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: process.env });
+  const noOpResult = await semanticRelease(await releaseConfig(), { cwd: testRepository, env: environment });
   assert.equal(noOpResult, false);
   assert.equal(git(testRepository, "rev-parse", "HEAD"), releasedHead);
   assert.equal(await readFile(path.join(testRepository, "CHANGELOG.md"), "utf8"), releasedChangelog);
