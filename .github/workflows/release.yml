@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
 
           for attempt in {1..6}; do
-            if draft="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" --jq '.draft' 2>/dev/null)" && [[ "${draft}" == 'true' ]]; then
+            if draft="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft --jq '.isDraft' 2>/dev/null)" && [[ "${draft}" == 'true' ]]; then
               exit 0
             fi
             if [[ "${attempt}" -lt 6 ]]; then
