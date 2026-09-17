@@ -21,4 +21,13 @@ fmt:
 test:
 	go test -v -cover -timeout=120s -parallel=10 ./...
 
-.PHONY: fmt lint test build install generate docs-validate
+release-snapshot:
+	goreleaser release --snapshot --clean --skip=publish,sign
+	./scripts/release/verify-artifacts.sh
+
+automation-test:
+	./scripts/ci/validate-pr-title_test.sh
+	./scripts/release/verify-generated-changelog_test.sh
+	./scripts/release/validate-release-tag_test.sh
+
+.PHONY: fmt lint test build install generate docs-validate release-snapshot automation-test

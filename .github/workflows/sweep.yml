@@ -1,4 +1,4 @@
-name: Acceptance cleanup
+name: Acceptance Cleanup
 
 on:
   workflow_dispatch:

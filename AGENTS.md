@@ -23,6 +23,8 @@ How to read a rule: every rule is binding within that precedence. A rule startin
 - Run `go vet ./...` before pushing.
 - Run `golangci-lint run` before pushing.
 - Run `goreleaser check` after changing `.goreleaser.yml` or `.github/workflows/release.yml`.
+- Run `npm ci --ignore-scripts` and `npm test` after changing release automation configuration or scripts.
+- Run `make release-snapshot` after changing release packaging.
 
 ## Public API
 
@@ -40,14 +42,16 @@ How to read a rule: every rule is binding within that precedence. A rule startin
 
 - Pin every release tool to an exact version; never use `latest`, a major-only version, or a version range in `.github/workflows/release.yml`. No mechanical check enforces this rule yet.
 - Ask first before renaming the `Release` workflow or changing its `v*` tag trigger. External OIDC trust depends on both values.
+- Use Conventional Commit format for pull request titles because the squash-merged title drives automated versioning and changelog generation.
+- Let release automation update `CHANGELOG.md`; do not edit it in feature pull requests.
 - Keep the AWS account ID, role ARN, and secret identifiers in masked GitHub repository secrets, and keep the AWS region and expected public signing-key fingerprint in private repository variables rather than committed workflow values.
 - Keep AWS session credentials scoped to the secret-fetching release step instead of exporting them to the job environment.
 - Never store the release-signing private key or passphrase in GitHub secrets, repository files, workflow outputs, environment files, logs, caches, or artifacts. The release workflow retrieves them through short-lived OIDC credentials into permission-restricted ephemeral files. No mechanical check enforces this rule yet.
 - Never echo release credentials or enable shell tracing in a step that can access them. No mechanical check enforces this rule yet.
 - Remove ephemeral signing files on every release-step exit.
-- Require every release tag to be a complete semantic version on the current `main` commit, and verify the imported key against the configured signing-key fingerprint before signing.
+- Require every release tag to be a complete semantic version created by release automation for a changelog-only commit in `main` history, and verify the imported key against the configured signing-key fingerprint before signing.
 - Never create or push a version tag, publish a GitHub release, replace published assets, register the provider, or change repository visibility unless the user explicitly requests that action. No mechanical check enforces this rule yet.
-- Add a changelog entry before publishing a new semantic version.
+- Require a generated changelog entry before publishing a new semantic version.
 
 ## Tests
 
