@@ -55,7 +55,7 @@ try {
   );
   await symlink(path.join(repositoryRoot, "node_modules"), path.join(testRepository, "node_modules"), "dir");
 
-  git(temporaryRoot, "init", "--bare", "--quiet", remoteRepository);
+  git(temporaryRoot, "init", "--bare", "--quiet", "--initial-branch=main", remoteRepository);
   git(testRepository, "init", "--quiet", "--initial-branch=main");
   git(testRepository, "config", "user.name", "Release Test");
   git(testRepository, "config", "user.email", "release-test@example.com");
