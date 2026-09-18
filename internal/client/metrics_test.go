@@ -36,6 +36,13 @@ func TestMetricLifecycleRequests(t *testing.T) {
 			if request.Method != http.MethodPatch || request.URL.Path != "/v1/metrics/abc123def456ghi789jklm" {
 				t.Fatalf("update request = %s %s", request.Method, request.URL.Path)
 			}
+			var body map[string]any
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if runtimeConfig, ok := body["runtime_config"]; !ok || runtimeConfig != nil {
+				t.Fatalf("update runtime_config = %#v, present = %t", runtimeConfig, ok)
+			}
 			_, _ = response.Write([]byte(metricTestEnvelope))
 		case 4:
 			if request.Method != http.MethodDelete {
@@ -59,7 +66,7 @@ func TestMetricLifecycleRequests(t *testing.T) {
 	if _, err := apiClient.GetMetric(t.Context(), created.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := apiClient.UpdateMetric(t.Context(), created.ID, input); err != nil {
+	if _, err := apiClient.UpdateMetric(t.Context(), created.ID, UpdateMetricInput{CreateMetricInput: input, ClearRuntimeConfig: true}); err != nil {
 		t.Fatal(err)
 	}
 	if err := apiClient.DeleteMetric(t.Context(), created.ID); err != nil {

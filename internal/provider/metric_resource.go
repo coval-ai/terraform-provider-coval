@@ -161,7 +161,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"metadata_field_type":          optionalString("Data type for metadata-field extraction.", stringvalidator.OneOf("STRING", "NUMBER", "BOOLEAN")),
 			"metadata_field_key":           optionalString("Metadata key extracted by a metadata-field metric."),
 			"regex_pattern":                optionalString("Regular expression used by a transcript-regex metric."),
-			"role":                         optionalString("Canonical speaker role filtered by a transcript-regex metric.", stringvalidator.OneOf("agent", "persona")),
+			"role":                         optionalString("Speaker role filtered by a transcript-regex metric. The API normalizes user to persona and assistant to agent.", stringvalidator.OneOf("agent", "persona", "user", "assistant")),
 			"min_pause_duration_seconds":   optionalFloat("Minimum pause duration for pause-analysis metrics.", float64validator.AtLeast(0.5)),
 			"max_silence_duration_seconds": optionalFloat("Maximum silence duration in seconds.", float64validator.AtLeast(math.SmallestNonzeroFloat64)),
 			"min_silence_gap_seconds":      optionalFloat("Minimum gap between silence periods in seconds.", float64validator.AtLeast(math.SmallestNonzeroFloat64)),
@@ -186,7 +186,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"include_traces":       schema.BoolAttribute{MarkdownDescription: "Whether trace context is injected into supported LLM judge prompts.", Optional: true, Computed: true, PlanModifiers: []planmodifier.Bool{boolplanmodifier.UseStateForUnknown()}},
 			"runtime_config":       metricRuntimeConfigSchema(),
 			"target_condition":     metricTargetConditionSchema(),
-			"tags":                 optionalSet("Tags associated with the metric. Set [] to clear them.", setvalidator.SizeAtMost(20)),
+			"tags":                 optionalSet("Tags associated with the metric. Set [] to clear them."),
 			"created_by":           schema.StringAttribute{MarkdownDescription: "Creator email returned by Coval.", Computed: true},
 			"create_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"update_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest update.", Computed: true},
@@ -197,7 +197,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 
 func metricRuntimeConfigSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{
-		MarkdownDescription: "LLM model and thinking configuration.",
+		MarkdownDescription: "LLM model and thinking configuration. Set an empty object to restore the platform default during an update.",
 		Optional:            true, Computed: true,
 		PlanModifiers: []planmodifier.Object{objectplanmodifier.UseStateForUnknown()},
 		Attributes: map[string]schema.Attribute{
@@ -302,6 +302,8 @@ func (r *metricResource) Read(ctx context.Context, req resource.ReadRequest, res
 func (r *metricResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 	var plan metricResourceModel
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	var config metricResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -310,7 +312,10 @@ func (r *metricResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdateMetric(ctx, plan.ID.ValueString(), input)
+	updated, err := r.client.UpdateMetric(ctx, plan.ID.ValueString(), client.UpdateMetricInput{
+		CreateMetricInput:  input,
+		ClearRuntimeConfig: runtimeConfigIsExplicitlyEmpty(config.RuntimeConfig),
+	})
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Coval metric", err.Error())
 		return
@@ -431,13 +436,38 @@ func runtimeConfigFromObject(_ context.Context, value types.Object) (*client.Met
 	return &client.MetricRuntimeConfig{ModelVersion: stringPointer(attributes["model_version"].(types.String)), ThinkingEnabled: boolPointer(attributes["thinking_enabled"].(types.Bool))}, nil
 }
 
+func runtimeConfigIsExplicitlyEmpty(value types.Object) bool {
+	if value.IsNull() || value.IsUnknown() {
+		return false
+	}
+	attributes := value.Attributes()
+	return attributes["model_version"].IsNull() && attributes["thinking_enabled"].IsNull()
+}
+
 func targetConditionFromObject(ctx context.Context, value types.Object) (*client.MetricTargetCondition, diag.Diagnostics) {
 	if value.IsNull() || value.IsUnknown() {
 		return nil, nil
 	}
 	attributes := value.Attributes()
+	comparisonOperator := attributes["comparison_operator"].(types.String)
+	targetFloat := floatPointer(attributes["target_float"].(types.Float64))
 	targetValues, diagnostics := stringSet(ctx, attributes["target_values"].(types.Set))
-	return &client.MetricTargetCondition{ComparisonOperator: attributes["comparison_operator"].(types.String).ValueString(), TargetFloat: floatPointer(attributes["target_float"].(types.Float64)), TargetValues: targetValues}, diagnostics
+	if comparisonOperator.IsUnknown() {
+		return nil, diagnostics
+	}
+	hasFloat := targetFloat != nil
+	hasValues := targetValues != nil
+	if hasFloat == hasValues {
+		diagnostics.AddAttributeError(path.Root("target_condition"), "Invalid target condition", "Set exactly one of target_float or target_values.")
+		return nil, diagnostics
+	}
+	operator := comparisonOperator.ValueString()
+	isMembership := operator == "in" || operator == "nin"
+	if isMembership != hasValues {
+		diagnostics.AddAttributeError(path.Root("target_condition"), "Invalid target condition", "Use target_values with in or nin, and target_float with eq, neq, gt, gte, lt, or lte.")
+		return nil, diagnostics
+	}
+	return &client.MetricTargetCondition{ComparisonOperator: operator, TargetFloat: targetFloat, TargetValues: targetValues}, diagnostics
 }
 
 func metricResourceState(ctx context.Context, remote client.Metric, prior *metricResourceModel) (metricResourceModel, diag.Diagnostics) {
@@ -475,7 +505,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		Description: types.StringValue(remote.Description), MetricType: types.StringValue(remote.MetricType), Evaluation: metricEvaluationValue(remote.Evaluation),
 		Prompt: nullableMetricString(remote.Prompt), EnabledTools: set(remote.EnabledTools), Categories: set(remote.Categories),
 		MinValue: nullableFloat(remote.MinValue), MaxValue: nullableFloat(remote.MaxValue), MetadataFieldType: nullableMetricString(remote.MetadataFieldType),
-		MetadataFieldKey: nullableMetricString(remote.MetadataFieldKey), RegexPattern: nullableMetricString(remote.RegexPattern), Role: nullableMetricString(remote.Role),
+		MetadataFieldKey: nullableMetricString(remote.MetadataFieldKey), RegexPattern: nullableMetricString(remote.RegexPattern), Role: metricRoleState(remote.Role, prior),
 		MinPauseDurationSeconds: nullableFloat(remote.MinPauseDurationSeconds), MaxSilenceDurationSeconds: nullableFloat(remote.MaxSilenceDurationSeconds),
 		MinSilenceGapSeconds: nullableFloat(remote.MinSilenceGapSeconds), FrequencyThreshold: nullableFloat(remote.FrequencyThreshold),
 		Direction: nullableMetricString(remote.Direction), SuccessSentiments: set(remote.SuccessSentiments), PercentAbove: nullableFloat(remote.PercentAbove),
@@ -503,6 +533,27 @@ func nullableMetricString(value *string) types.String {
 	}
 	return types.StringValue(*value)
 }
+
+func metricRoleState(value *string, prior *metricResourceModel) types.String {
+	if value == nil {
+		return types.StringNull()
+	}
+	if prior != nil && !prior.Role.IsNull() && !prior.Role.IsUnknown() {
+		configured := prior.Role.ValueString()
+		canonical := configured
+		switch configured {
+		case "assistant":
+			canonical = "agent"
+		case "user":
+			canonical = "persona"
+		}
+		if canonical == *value {
+			return prior.Role
+		}
+	}
+	return types.StringValue(*value)
+}
+
 func nullableFloat(value *float64) types.Float64 {
 	if value == nil {
 		return types.Float64Null()

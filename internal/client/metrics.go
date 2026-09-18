@@ -128,7 +128,28 @@ type CreateMetricInput struct {
 }
 
 // UpdateMetricInput contains writable metric fields for a partial update.
-type UpdateMetricInput = CreateMetricInput
+type UpdateMetricInput struct {
+	CreateMetricInput
+	ClearRuntimeConfig bool `json:"-"`
+}
+
+// MarshalJSON preserves the public API's distinction between an omitted
+// runtime_config and an explicit null that restores the platform default.
+func (input UpdateMetricInput) MarshalJSON() ([]byte, error) {
+	encoded, err := json.Marshal(input.CreateMetricInput)
+	if err != nil {
+		return nil, err
+	}
+	if !input.ClearRuntimeConfig {
+		return encoded, nil
+	}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(encoded, &object); err != nil {
+		return nil, err
+	}
+	object["runtime_config"] = json.RawMessage("null")
+	return json.Marshal(object)
+}
 
 // ListMetricsOptions filters and paginates metrics.
 type ListMetricsOptions struct {

@@ -65,8 +65,8 @@ resource "coval_metric" "resolution" {
 - `prompt` (String) LLM evaluation prompt.
 - `regex_pattern` (String) Regular expression used by a transcript-regex metric.
 - `reporting_method` (String) How composite criterion verdicts are aggregated.
-- `role` (String) Canonical speaker role filtered by a transcript-regex metric.
-- `runtime_config` (Attributes) LLM model and thinking configuration. (see [below for nested schema](#nestedatt--runtime_config))
+- `role` (String) Speaker role filtered by a transcript-regex metric. The API normalizes user to persona and assistant to agent.
+- `runtime_config` (Attributes) LLM model and thinking configuration. Set an empty object to restore the platform default during an update. (see [below for nested schema](#nestedatt--runtime_config))
 - `sql_query` (String) SQL query used by a SQL float metric.
 - `success_end_reasons` (Set of String) Simulation end reasons that count as successful.
 - `success_sentiments` (Set of String) Sentiments that count as successful.

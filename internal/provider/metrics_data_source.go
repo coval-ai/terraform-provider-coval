@@ -6,6 +6,7 @@ import (
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
+	"github.com/hashicorp/terraform-plugin-framework-validators/setvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -78,7 +79,7 @@ func (d *metricsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	cSet := func() schema.SetAttribute { return schema.SetAttribute{ElementType: types.StringType, Computed: true} }
 	resp.Schema = schema.Schema{MarkdownDescription: "Retrieves all Coval metrics matching public API filters.", Attributes: map[string]schema.Attribute{
 		"filter": schema.StringAttribute{Optional: true}, "page_size": schema.Int64Attribute{Optional: true, Validators: []validator.Int64{int64validator.Between(1, 100)}}, "order_by": schema.StringAttribute{Optional: true},
-		"include_builtin": schema.BoolAttribute{MarkdownDescription: "Include Coval built-in metrics.", Optional: true}, "tag_filters": schema.SetAttribute{ElementType: types.StringType, Optional: true},
+		"include_builtin": schema.BoolAttribute{MarkdownDescription: "Include Coval built-in metrics.", Optional: true}, "tag_filters": schema.SetAttribute{ElementType: types.StringType, Optional: true, Validators: []validator.Set{setvalidator.SizeAtMost(20)}},
 		"metrics": schema.ListNestedAttribute{MarkdownDescription: "All matching metric summaries. Use the singular coval_metric data source for polymorphic and nested configuration.", Computed: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 			"name": cS(), "id": cS(), "metric_name": cS(), "description": cS(), "metric_type": cS(), "prompt": cS(), "enabled_tools": cSet(), "categories": cSet(), "min_value": cF(), "max_value": cF(),
 			"metadata_field_type": cS(), "metadata_field_key": cS(), "regex_pattern": cS(), "role": cS(), "min_pause_duration_seconds": cF(), "max_silence_duration_seconds": cF(), "min_silence_gap_seconds": cF(), "frequency_threshold": cF(),
