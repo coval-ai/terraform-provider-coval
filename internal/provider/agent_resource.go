@@ -395,7 +395,7 @@ func agentState(ctx context.Context, remote client.Agent, prior *agentResourceMo
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent attributes", err.Error())
 	}
-	metadata, err := dynamicFromJSONObjectPreserving(remote.Metadata, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata }))
+	metadata, err := agentMetadataState(remote.Metadata, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata }))
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent metadata", err.Error())
 	}
@@ -446,6 +446,16 @@ func nullableAgentObject(raw json.RawMessage, prior types.Dynamic) (types.Dynami
 		return types.DynamicNull(), nil
 	}
 	return dynamicFromJSONObjectPreserving(raw, prior)
+}
+
+func agentMetadataState(raw json.RawMessage, prior types.Dynamic) (types.Dynamic, error) {
+	if !prior.IsNull() && !prior.IsUnknown() && !prior.IsUnderlyingValueUnknown() {
+		priorRaw, err := dynamicJSONObject(prior)
+		if err == nil && priorRaw != nil && jsonObjectContains(raw, *priorRaw) {
+			return prior, nil
+		}
+	}
+	return dynamicFromJSONObject(raw)
 }
 
 func nullableString(value *string) types.String {

@@ -33,7 +33,8 @@ func TestAccAgentResource(t *testing.T) {
 			)},
 			{ResourceName: resourceName, ImportState: true, ImportStateVerify: true},
 			{Config: testAccAgentConfig(name, true), Check: resource.ComposeAggregateTestCheckFunc(
-				resource.TestCheckResourceAttr(resourceName, "display_name", name+" Updated"), resource.TestCheckNoResourceAttr(resourceName, "prompt"),
+				resource.TestCheckResourceAttr(resourceName, "display_name", name+" Updated"), resource.TestCheckResourceAttr(resourceName, "model_type", "MODEL_TYPE_CHAT_A2A"),
+				resource.TestCheckNoResourceAttr(resourceName, "prompt"),
 				resource.TestCheckNoResourceAttr(resourceName, "language"), resource.TestCheckNoResourceAttr(resourceName, "attributes"),
 				resource.TestCheckResourceAttr(resourceName, "workflows.%", "0"), resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 				resource.TestCheckResourceAttr("data.coval_agents.matching", "agents.#", "1"),
@@ -90,6 +91,7 @@ func sweepAgents(_ string) error {
 
 func testAccAgentConfig(name string, updated bool) string {
 	displayName := name
+	modelType := "MODEL_TYPE_CHAT"
 	prompt := `prompt = "Help customers with acceptance-test questions."`
 	language := `language = "en"`
 	attributes := `attributes = { owner = "terraform-provider-coval" }`
@@ -97,6 +99,7 @@ func testAccAgentConfig(name string, updated bool) string {
 	tags := `tags = ["terraform", "acceptance"]`
 	if updated {
 		displayName += " Updated"
+		modelType = "MODEL_TYPE_CHAT_A2A"
 		prompt = ""
 		language = ""
 		attributes = ""
@@ -108,7 +111,7 @@ func testAccAgentConfig(name string, updated bool) string {
 resource "coval_agent" "test" {
   customer_agent_id = %s
   display_name      = %s
-  model_type       = "MODEL_TYPE_CHAT"
+  model_type       = %s
   %s
   %s
   %s
@@ -127,5 +130,5 @@ data "coval_agents" "matching" {
   filter     = %s
   depends_on = [coval_agent.test]
 }
-`, strconv.Quote(name), strconv.Quote(displayName), prompt, language, attributes, workflows, tags, strconv.Quote(filter))
+`, strconv.Quote(name), strconv.Quote(displayName), strconv.Quote(modelType), prompt, language, attributes, workflows, tags, strconv.Quote(filter))
 }

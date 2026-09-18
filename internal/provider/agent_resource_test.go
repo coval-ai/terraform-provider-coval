@@ -82,6 +82,68 @@ func TestAgentStatePreservesNullableAndJSONFields(t *testing.T) {
 	}
 }
 
+func TestAgentStatePreservesConfiguredMetadataWhenAPIAddsDefaults(t *testing.T) {
+	t.Parallel()
+
+	configured := types.DynamicValue(types.ObjectValueMust(
+		map[string]attr.Type{
+			"chat_endpoint": types.StringType,
+			"nested":        types.ObjectType{AttrTypes: map[string]attr.Type{"configured": types.BoolType}},
+		},
+		map[string]attr.Value{
+			"chat_endpoint": types.StringValue("https://example.com/chat"),
+			"nested": types.ObjectValueMust(
+				map[string]attr.Type{"configured": types.BoolType},
+				map[string]attr.Value{"configured": types.BoolValue(true)},
+			),
+		},
+	))
+	prior := &agentResourceModel{Metadata: configured}
+	state, diagnostics := agentResourceState(context.Background(), client.Agent{
+		ID:              "abc123def456ghi789jklm",
+		CustomerAgentID: "support",
+		DisplayName:     "Support",
+		ModelType:       "MODEL_TYPE_CHAT_A2A",
+		Metadata: json.RawMessage(`{
+			"chat_endpoint":"https://example.com/chat",
+			"nested":{"configured":true,"api_default":"value"},
+			"response_message_path":"result.artifacts.0.parts.0.text"
+		}`),
+		Workflows:  json.RawMessage(`{}`),
+		CreateTime: "2026-09-18T00:00:00Z",
+	}, prior)
+	if diagnostics.HasError() {
+		t.Fatalf("diagnostics = %v", diagnostics)
+	}
+	if !state.Metadata.Equal(configured) {
+		t.Fatalf("metadata = %#v, want configured value %#v", state.Metadata, configured)
+	}
+}
+
+func TestAgentStateUsesRemoteMetadataWhenConfiguredValueChanges(t *testing.T) {
+	t.Parallel()
+
+	configured := types.DynamicValue(types.ObjectValueMust(
+		map[string]attr.Type{"chat_endpoint": types.StringType},
+		map[string]attr.Value{"chat_endpoint": types.StringValue("https://example.com/old")},
+	))
+	state, diagnostics := agentResourceState(context.Background(), client.Agent{
+		ID:              "abc123def456ghi789jklm",
+		CustomerAgentID: "support",
+		DisplayName:     "Support",
+		ModelType:       "MODEL_TYPE_CHAT",
+		Metadata:        json.RawMessage(`{"chat_endpoint":"https://example.com/new","api_default":true}`),
+		Workflows:       json.RawMessage(`{}`),
+		CreateTime:      "2026-09-18T00:00:00Z",
+	}, &agentResourceModel{Metadata: configured})
+	if diagnostics.HasError() {
+		t.Fatalf("diagnostics = %v", diagnostics)
+	}
+	if state.Metadata.Equal(configured) {
+		t.Fatal("metadata preserved a configured value that the API changed")
+	}
+}
+
 func TestListAllAgentsRejectsRepeatedToken(t *testing.T) {
 	t.Parallel()
 
