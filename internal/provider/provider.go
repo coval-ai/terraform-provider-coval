@@ -128,6 +128,7 @@ func (p *CovalProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		newTestSetResource,
 		newTestCaseResource,
+		newMetricResource,
 	}
 }
 
@@ -137,6 +138,8 @@ func (p *CovalProvider) DataSources(context.Context) []func() datasource.DataSou
 		newTestSetsDataSource,
 		newTestCaseDataSource,
 		newTestCasesDataSource,
+		newMetricDataSource,
+		newMetricsDataSource,
 	}
 }
 
