@@ -172,10 +172,13 @@ func (r *personaResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			"background_sound": schema.StringAttribute{
 				MarkdownDescription: "Built-in background sound ID or a custom sound reference in the form custom:<id>.",
 				Optional:            true,
-				Validators: []validator.String{stringvalidator.RegexMatches(
-					regexp.MustCompile(`^(off|office|lounge|crowd|airport|bus|playground|doorbell|train-arrival|portable-air-conditioner|skatepark|small-dog-bark|cafe|ferry-and-announcement|heavy-rain|moderate-wind|newborn-baby-crying|office-with-alarm|street-with-sirens|construction-work|backchanneling|custom:[A-Za-z0-9_-]+)$`),
-					"must be a supported built-in sound or custom:<id>",
-				)},
+				Validators: []validator.String{
+					stringvalidator.LengthAtMost(100),
+					stringvalidator.RegexMatches(
+						regexp.MustCompile(`^(off|office|lounge|crowd|airport|bus|playground|doorbell|train-arrival|portable-air-conditioner|skatepark|small-dog-bark|cafe|ferry-and-announcement|heavy-rain|moderate-wind|newborn-baby-crying|office-with-alarm|street-with-sirens|construction-work|backchanneling|custom:[A-Za-z0-9_-]+)$`),
+						"must be a supported built-in sound or custom:<id>",
+					),
+				},
 			},
 			"background_sound_volume": schema.Float64Attribute{
 				MarkdownDescription: "Background-sound volume. Must be zero or greater.",
@@ -233,8 +236,9 @@ func (r *personaResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 						Validators:          []validator.String{stringvalidator.OneOf("landline", "cell-poor", "cell-handoff")},
 					},
 					"preset_version": schema.Int64Attribute{
-						MarkdownDescription: "Version of the channel degradation preset.",
+						MarkdownDescription: "Version of the channel degradation preset. Coval selects the current catalog version when omitted.",
 						Optional:            true,
+						Computed:            true,
 					},
 				},
 			},
@@ -266,6 +270,13 @@ func personaTagValidators() []validator.Set {
 			stringvalidator.LengthAtMost(200),
 			stringvalidator.RegexMatches(regexp.MustCompile(`\S`), "must contain at least one non-whitespace character"),
 		),
+	}
+}
+
+func personaTagFilterValidators() []validator.Set {
+	return []validator.Set{
+		setvalidator.SizeAtMost(20),
+		setvalidator.ValueStringsAre(stringvalidator.LengthAtMost(200)),
 	}
 }
 

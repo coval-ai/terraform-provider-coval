@@ -78,7 +78,7 @@ func (d *personasDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 				MarkdownDescription: "Optional tags that every returned persona must have.",
 				ElementType:         types.StringType,
 				Optional:            true,
-				Validators:          personaTagValidators(),
+				Validators:          personaTagFilterValidators(),
 			},
 			"personas": schema.ListNestedAttribute{
 				MarkdownDescription: "All matching personas.",

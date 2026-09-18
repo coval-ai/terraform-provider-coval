@@ -3,12 +3,71 @@ package provider
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	frameworkdatasource "github.com/hashicorp/terraform-plugin-framework/datasource"
+	datasourceschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	frameworkresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	resourceschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
+
+func TestPersonaAudioDegradationVersionAcceptsServerSelection(t *testing.T) {
+	t.Parallel()
+
+	var response frameworkresource.SchemaResponse
+	newPersonaResource().Schema(context.Background(), frameworkresource.SchemaRequest{}, &response)
+	if response.Diagnostics.HasError() {
+		t.Fatalf("Schema() diagnostics: %v", response.Diagnostics)
+	}
+
+	audioDegradation, ok := response.Schema.Attributes["audio_degradation"].(resourceschema.SingleNestedAttribute)
+	if !ok {
+		t.Fatalf("audio_degradation schema = %T", response.Schema.Attributes["audio_degradation"])
+	}
+	presetVersion, ok := audioDegradation.Attributes["preset_version"].(resourceschema.Int64Attribute)
+	if !ok {
+		t.Fatalf("preset_version schema = %T", audioDegradation.Attributes["preset_version"])
+	}
+	if !presetVersion.IsOptional() || !presetVersion.IsComputed() {
+		t.Fatalf("preset_version must be optional and computed: %#v", presetVersion)
+	}
+}
+
+func TestPersonaSchemasMatchPublicStringAndTagConstraints(t *testing.T) {
+	t.Parallel()
+
+	var resourceResponse frameworkresource.SchemaResponse
+	newPersonaResource().Schema(context.Background(), frameworkresource.SchemaRequest{}, &resourceResponse)
+	backgroundSound, ok := resourceResponse.Schema.Attributes["background_sound"].(resourceschema.StringAttribute)
+	if !ok {
+		t.Fatalf("background_sound schema = %T", resourceResponse.Schema.Attributes["background_sound"])
+	}
+	if diagnostics := validateString(t.Context(), backgroundSound.Validators, "custom:"+strings.Repeat("x", 93)); diagnostics.HasError() {
+		t.Errorf("100-character background_sound was rejected: %v", diagnostics)
+	}
+	if diagnostics := validateString(t.Context(), backgroundSound.Validators, "custom:"+strings.Repeat("x", 94)); !diagnostics.HasError() {
+		t.Error("background_sound longer than 100 characters was accepted")
+	}
+
+	var dataSourceResponse frameworkdatasource.SchemaResponse
+	newPersonasDataSource().Schema(context.Background(), frameworkdatasource.SchemaRequest{}, &dataSourceResponse)
+	tagFilters, ok := dataSourceResponse.Schema.Attributes["tag_filters"].(datasourceschema.SetAttribute)
+	if !ok {
+		t.Fatalf("tag_filters schema = %T", dataSourceResponse.Schema.Attributes["tag_filters"])
+	}
+	whitespaceFilter := types.SetValueMust(types.StringType, []attr.Value{types.StringValue("   ")})
+	if diagnostics := validateSet(t.Context(), tagFilters.Validators, whitespaceFilter); diagnostics.HasError() {
+		t.Errorf("public contract permits whitespace tag filters: %v", diagnostics)
+	}
+	longFilter := types.SetValueMust(types.StringType, []attr.Value{types.StringValue(strings.Repeat("x", 201))})
+	if diagnostics := validateSet(t.Context(), tagFilters.Validators, longFilter); !diagnostics.HasError() {
+		t.Error("tag filter longer than 200 characters was accepted")
+	}
+}
 
 func TestCreatePersonaInputConvertsNestedAndDynamicValues(t *testing.T) {
 	t.Parallel()

@@ -78,7 +78,7 @@ Required:
 
 Optional:
 
-- `preset_version` (Number) Version of the channel degradation preset.
+- `preset_version` (Number) Version of the channel degradation preset. Coval selects the current catalog version when omitted.
 
 
 <a id="nestedatt--multi_phone_config"></a>

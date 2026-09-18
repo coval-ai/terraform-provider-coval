@@ -43,6 +43,7 @@ func TestAccPersonaResource(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "interruption_rate", "LOW"),
 					resource.TestCheckResourceAttr(resourceName, "initialization_parameters.customer_tier", "premium"),
 					resource.TestCheckResourceAttr(resourceName, "audio_degradation.preset", "cell-poor"),
+					resource.TestCheckResourceAttrSet(resourceName, "audio_degradation.preset_version"),
 					resource.TestCheckResourceAttr(resourceName, "tags.#", "2"),
 					resource.TestCheckResourceAttrSet(resourceName, "id"),
 					resource.TestCheckResourceAttrSet(resourceName, "resource_name"),
@@ -62,6 +63,10 @@ func TestAccPersonaResource(t *testing.T) {
 					resource.TestCheckResourceAttr(resourceName, "name", name+" updated"),
 					resource.TestCheckNoResourceAttr(resourceName, "persona_prompt"),
 					resource.TestCheckNoResourceAttr(resourceName, "background_sound"),
+					resource.TestCheckNoResourceAttr(resourceName, "background_sound_volume"),
+					resource.TestCheckNoResourceAttr(resourceName, "wait_seconds"),
+					resource.TestCheckNoResourceAttr(resourceName, "conversation_initiation"),
+					resource.TestCheckNoResourceAttr(resourceName, "multi_language_stt"),
 					resource.TestCheckNoResourceAttr(resourceName, "initialization_parameters"),
 					resource.TestCheckNoResourceAttr(resourceName, "audio_degradation"),
 					resource.TestCheckResourceAttr(resourceName, "interruption_rate", "NONE"),
@@ -137,8 +142,7 @@ func testAccPersonaConfig(name string, cleared bool) string {
     customer_tier = "premium"
   }
   audio_degradation = {
-    preset         = "cell-poor"
-    preset_version = 1
+    preset = "cell-poor"
   }
   tags = ["terraform", "acceptance"]`
 	if cleared {
