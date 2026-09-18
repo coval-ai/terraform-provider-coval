@@ -111,6 +111,51 @@ func TestDynamicJSONObjectPreservesEquivalentTerraformType(t *testing.T) {
 	}
 }
 
+func TestJSONObjectAdditionsCanBeRemovedWithoutHidingDrift(t *testing.T) {
+	t.Parallel()
+
+	planned := json.RawMessage(`{
+		"chat_endpoint":"https://example.com/chat",
+		"nested":{"configured":true}
+	}`)
+	remote := json.RawMessage(`{
+		"chat_endpoint":"https://example.com/chat",
+		"nested":{"configured":true,"api_default":"value"},
+		"response_message_path":"result.artifacts.0.parts.0.text"
+	}`)
+	additions, ok := jsonObjectAdditions(remote, planned)
+	if !ok {
+		t.Fatal("remote metadata was not recognized as a superset")
+	}
+	withoutAdditions, err := jsonObjectWithoutMatchingAdditions(remote, additions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !jsonValuesEqual(withoutAdditions, planned) {
+		t.Fatalf("metadata without additions = %s, want %s", withoutAdditions, planned)
+	}
+
+	drifted := json.RawMessage(`{
+		"chat_endpoint":"https://example.com/chat",
+		"nested":{"configured":true,"api_default":"value"},
+		"response_message_path":"custom.path",
+		"custom_headers":{"X-Managed-Outside-Terraform":"true"}
+	}`)
+	withoutAdditions, err = jsonObjectWithoutMatchingAdditions(drifted, additions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantDrift := json.RawMessage(`{
+		"chat_endpoint":"https://example.com/chat",
+		"nested":{"configured":true},
+		"response_message_path":"custom.path",
+		"custom_headers":{"X-Managed-Outside-Terraform":"true"}
+	}`)
+	if !jsonValuesEqual(withoutAdditions, wantDrift) {
+		t.Fatalf("normalized drift = %s, want %s", withoutAdditions, wantDrift)
+	}
+}
+
 func TestJSONObjectWithoutKey(t *testing.T) {
 	t.Parallel()
 
