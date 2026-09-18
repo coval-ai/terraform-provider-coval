@@ -43,6 +43,25 @@ func dynamicJSONObject(value types.Dynamic) (*json.RawMessage, error) {
 	return &raw, nil
 }
 
+func dynamicJSONValue(value types.Dynamic) (*json.RawMessage, error) {
+	if value.IsNull() || value.IsUnknown() {
+		return nil, nil
+	}
+	if value.IsUnderlyingValueUnknown() {
+		return nil, errors.New("value must be known before it can be sent to Coval")
+	}
+	goValue, err := terraformValueToJSON(value.UnderlyingValue())
+	if err != nil {
+		return nil, err
+	}
+	encoded, err := json.Marshal(goValue)
+	if err != nil {
+		return nil, fmt.Errorf("encode value as JSON: %w", err)
+	}
+	raw := json.RawMessage(encoded)
+	return &raw, nil
+}
+
 func dynamicJSONObjectHasKey(value types.Dynamic, key string) (bool, error) {
 	if value.IsNull() || value.IsUnknown() || value.IsUnderlyingValueUnknown() {
 		return false, nil
@@ -218,6 +237,29 @@ func dynamicFromJSONObjectPreserving(raw json.RawMessage, prior types.Dynamic) (
 		}
 	}
 	return dynamicFromJSONObject(raw)
+}
+
+func dynamicFromJSONValuePreserving(raw json.RawMessage, prior types.Dynamic) (types.Dynamic, error) {
+	if len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return types.DynamicNull(), nil
+	}
+	if !prior.IsNull() && !prior.IsUnknown() && !prior.IsUnderlyingValueUnknown() {
+		priorRaw, err := dynamicJSONValue(prior)
+		if err == nil && priorRaw != nil && jsonValuesEqual(*priorRaw, raw) {
+			return prior, nil
+		}
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return types.DynamicNull(), fmt.Errorf("decode Coval JSON value: %w", err)
+	}
+	value, err := terraformValueFromJSON(decoded)
+	if err != nil {
+		return types.DynamicNull(), err
+	}
+	return types.DynamicValue(value), nil
 }
 
 func dynamicFromJSONArray(raw json.RawMessage) (types.Dynamic, error) {

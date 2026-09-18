@@ -1,0 +1,1 @@
+terraform import coval_metric.resolution abc123def456ghi789jklm
