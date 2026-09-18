@@ -30,6 +30,14 @@ func TestAgentResourceSchemaAndInput(t *testing.T) {
 	if !ok || !metadataAttribute.Sensitive {
 		t.Error("metadata must be sensitive")
 	}
+	attributesAttribute, ok := response.Schema.Attributes["attributes"].(schema.DynamicAttribute)
+	if !ok || !attributesAttribute.Optional || !attributesAttribute.Computed || len(attributesAttribute.PlanModifiers) == 0 {
+		t.Error("attributes must be optional, computed, and preserve state while unknown")
+	}
+	knowledgeBaseIDsAttribute, ok := response.Schema.Attributes["knowledge_base_ids"].(schema.SetAttribute)
+	if !ok || !knowledgeBaseIDsAttribute.Computed || len(knowledgeBaseIDsAttribute.PlanModifiers) == 0 {
+		t.Error("knowledge_base_ids must be computed and preserve state while unknown")
+	}
 
 	metadata := types.DynamicValue(types.ObjectValueMust(
 		map[string]attr.Type{"chat_endpoint": types.StringType},
@@ -82,41 +90,39 @@ func TestAgentStatePreservesNullableAndJSONFields(t *testing.T) {
 	}
 }
 
-func TestAgentStatePreservesConfiguredMetadataWhenAPIAddsDefaults(t *testing.T) {
+func TestAgentStateUsesRemoteMetadataWhenAPIAddsFields(t *testing.T) {
 	t.Parallel()
 
 	configured := types.DynamicValue(types.ObjectValueMust(
-		map[string]attr.Type{
-			"chat_endpoint": types.StringType,
-			"nested":        types.ObjectType{AttrTypes: map[string]attr.Type{"configured": types.BoolType}},
-		},
-		map[string]attr.Value{
-			"chat_endpoint": types.StringValue("https://example.com/chat"),
-			"nested": types.ObjectValueMust(
-				map[string]attr.Type{"configured": types.BoolType},
-				map[string]attr.Value{"configured": types.BoolValue(true)},
-			),
-		},
+		map[string]attr.Type{"chat_endpoint": types.StringType},
+		map[string]attr.Value{"chat_endpoint": types.StringValue("https://example.com/chat")},
 	))
 	prior := &agentResourceModel{Metadata: configured}
+	remoteMetadata := json.RawMessage(`{
+		"chat_endpoint":"https://example.com/chat",
+		"custom_headers":{"X-Managed-Outside-Terraform":"true"}
+	}`)
 	state, diagnostics := agentResourceState(context.Background(), client.Agent{
 		ID:              "abc123def456ghi789jklm",
 		CustomerAgentID: "support",
 		DisplayName:     "Support",
 		ModelType:       "MODEL_TYPE_CHAT_A2A",
-		Metadata: json.RawMessage(`{
-			"chat_endpoint":"https://example.com/chat",
-			"nested":{"configured":true,"api_default":"value"},
-			"response_message_path":"result.artifacts.0.parts.0.text"
-		}`),
-		Workflows:  json.RawMessage(`{}`),
-		CreateTime: "2026-09-18T00:00:00Z",
+		Metadata:        remoteMetadata,
+		Workflows:       json.RawMessage(`{}`),
+		CreateTime:      "2026-09-18T00:00:00Z",
 	}, prior)
 	if diagnostics.HasError() {
 		t.Fatalf("diagnostics = %v", diagnostics)
 	}
-	if !state.Metadata.Equal(configured) {
-		t.Fatalf("metadata = %#v, want configured value %#v", state.Metadata, configured)
+	if state.Metadata.Equal(configured) {
+		t.Fatal("metadata hid fields added outside Terraform")
+	}
+	metadata, err := dynamicJSONObject(state.Metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metadata == nil || !jsonValuesEqual(*metadata, remoteMetadata) {
+		t.Fatalf("metadata = %s", metadata)
 	}
 }
 

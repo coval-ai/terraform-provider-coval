@@ -35,7 +35,7 @@ func TestAccAgentResource(t *testing.T) {
 			{Config: testAccAgentConfig(name, true), Check: resource.ComposeAggregateTestCheckFunc(
 				resource.TestCheckResourceAttr(resourceName, "display_name", name+" Updated"), resource.TestCheckResourceAttr(resourceName, "model_type", "MODEL_TYPE_CHAT_A2A"),
 				resource.TestCheckNoResourceAttr(resourceName, "prompt"),
-				resource.TestCheckNoResourceAttr(resourceName, "language"), resource.TestCheckNoResourceAttr(resourceName, "attributes"),
+				resource.TestCheckNoResourceAttr(resourceName, "language"), resource.TestCheckResourceAttr(resourceName, "attributes.%", "0"),
 				resource.TestCheckResourceAttr(resourceName, "workflows.%", "0"), resource.TestCheckResourceAttr(resourceName, "tags.#", "0"),
 				resource.TestCheckResourceAttr("data.coval_agents.matching", "agents.#", "1"),
 			)},
@@ -102,7 +102,7 @@ func testAccAgentConfig(name string, updated bool) string {
 		modelType = "MODEL_TYPE_CHAT_A2A"
 		prompt = ""
 		language = ""
-		attributes = ""
+		attributes = "attributes = {}"
 		workflows = "workflows = {}"
 		tags = "tags = []"
 	}

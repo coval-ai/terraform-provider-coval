@@ -36,7 +36,7 @@ resource "coval_agent" "support" {
 
 ### Optional
 
-- `attributes` (Dynamic) Free-form JSON object containing agent attributes. Set null to clear it.
+- `attributes` (Dynamic) Free-form JSON object containing agent attributes. Set {} to clear it.
 - `customer_agent_id` (String) Customer-defined external identifier. Coval defaults it to id when omitted.
 - `endpoint` (String) Webhook endpoint URL used by agent types that require one.
 - `language` (String) Primary language for the agent.

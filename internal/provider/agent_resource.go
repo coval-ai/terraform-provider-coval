@@ -129,8 +129,10 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Validators:          []validator.String{stringvalidator.LengthAtMost(200)},
 			},
 			"attributes": schema.DynamicAttribute{
-				MarkdownDescription: "Free-form JSON object containing agent attributes. Set null to clear it.",
+				MarkdownDescription: "Free-form JSON object containing agent attributes. Set {} to clear it.",
 				Optional:            true,
+				Computed:            true,
+				PlanModifiers:       []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()},
 			},
 			"metadata": schema.DynamicAttribute{
 				MarkdownDescription: "Simulator-specific JSON configuration. The required shape depends on model_type. Set {} to clear it.",
@@ -165,6 +167,7 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				MarkdownDescription: "Knowledge-base entry IDs associated with the agent.",
 				ElementType:         types.StringType,
 				Computed:            true,
+				PlanModifiers:       []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
 			},
 			"tags": schema.SetAttribute{
 				MarkdownDescription: "Tags associated with the agent. Set [] to clear them.",
@@ -395,7 +398,7 @@ func agentState(ctx context.Context, remote client.Agent, prior *agentResourceMo
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent attributes", err.Error())
 	}
-	metadata, err := agentMetadataState(remote.Metadata, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata }))
+	metadata, err := dynamicFromJSONObjectPreserving(remote.Metadata, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata }))
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent metadata", err.Error())
 	}
@@ -446,16 +449,6 @@ func nullableAgentObject(raw json.RawMessage, prior types.Dynamic) (types.Dynami
 		return types.DynamicNull(), nil
 	}
 	return dynamicFromJSONObjectPreserving(raw, prior)
-}
-
-func agentMetadataState(raw json.RawMessage, prior types.Dynamic) (types.Dynamic, error) {
-	if !prior.IsNull() && !prior.IsUnknown() && !prior.IsUnderlyingValueUnknown() {
-		priorRaw, err := dynamicJSONObject(prior)
-		if err == nil && priorRaw != nil && jsonObjectContains(raw, *priorRaw) {
-			return prior, nil
-		}
-	}
-	return dynamicFromJSONObject(raw)
 }
 
 func nullableString(value *string) types.String {
