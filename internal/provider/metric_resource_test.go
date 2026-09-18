@@ -28,7 +28,10 @@ func TestMetricResourceSchemaAndInput(t *testing.T) {
 			t.Errorf("%s must be a required string", name)
 		}
 	}
-	role := response.Schema.Attributes["role"].(schema.StringAttribute)
+	role, ok := response.Schema.Attributes["role"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("role has type %T, want schema.StringAttribute", response.Schema.Attributes["role"])
+	}
 	for _, alias := range []string{"user", "assistant"} {
 		var validation validator.StringResponse
 		role.Validators[0].ValidateString(context.Background(), validator.StringRequest{ConfigValue: types.StringValue(alias)}, &validation)
@@ -36,7 +39,10 @@ func TestMetricResourceSchemaAndInput(t *testing.T) {
 			t.Errorf("role validator rejected public alias %q: %v", alias, validation.Diagnostics)
 		}
 	}
-	tags := response.Schema.Attributes["tags"].(schema.SetAttribute)
+	tags, ok := response.Schema.Attributes["tags"].(schema.SetAttribute)
+	if !ok {
+		t.Fatalf("tags has type %T, want schema.SetAttribute", response.Schema.Attributes["tags"])
+	}
 	if len(tags.Validators) != 0 {
 		t.Fatalf("metric tags have %d validators, public write contract has no cardinality limit", len(tags.Validators))
 	}
@@ -101,7 +107,10 @@ func TestMetricRuntimeConfigAndListTagLimits(t *testing.T) {
 
 	var response datasource.SchemaResponse
 	(&metricsDataSource{}).Schema(context.Background(), datasource.SchemaRequest{}, &response)
-	tagFilters := response.Schema.Attributes["tag_filters"].(datasourceSchema.SetAttribute)
+	tagFilters, ok := response.Schema.Attributes["tag_filters"].(datasourceSchema.SetAttribute)
+	if !ok {
+		t.Fatalf("tag_filters has type %T, want schema.SetAttribute", response.Schema.Attributes["tag_filters"])
+	}
 	if len(tagFilters.Validators) != 1 {
 		t.Fatalf("tag_filters has %d validators, want public API max-items validator", len(tagFilters.Validators))
 	}

@@ -154,7 +154,7 @@ func listAllMetrics(ctx context.Context, apiClient *client.Client, options clien
 			return all, nil
 		}
 		if _, duplicate := seenTokens[page.NextPageToken]; duplicate {
-			return nil, fmt.Errorf("Coval metrics API repeated pagination token %q", page.NextPageToken)
+			return nil, fmt.Errorf("coval metrics API repeated pagination token %q", page.NextPageToken)
 		}
 		seenTokens[page.NextPageToken] = struct{}{}
 		options.PageToken = page.NextPageToken

@@ -432,8 +432,20 @@ func runtimeConfigFromObject(_ context.Context, value types.Object) (*client.Met
 	if value.IsNull() || value.IsUnknown() {
 		return nil, nil
 	}
+	var diagnostics diag.Diagnostics
 	attributes := value.Attributes()
-	return &client.MetricRuntimeConfig{ModelVersion: stringPointer(attributes["model_version"].(types.String)), ThinkingEnabled: boolPointer(attributes["thinking_enabled"].(types.Bool))}, nil
+	modelVersion, ok := attributes["model_version"].(types.String)
+	if !ok {
+		diagnostics.AddAttributeError(path.Root("runtime_config").AtName("model_version"), "Invalid runtime configuration", fmt.Sprintf("Expected a string value, got %T.", attributes["model_version"]))
+	}
+	thinkingEnabled, ok := attributes["thinking_enabled"].(types.Bool)
+	if !ok {
+		diagnostics.AddAttributeError(path.Root("runtime_config").AtName("thinking_enabled"), "Invalid runtime configuration", fmt.Sprintf("Expected a boolean value, got %T.", attributes["thinking_enabled"]))
+	}
+	if diagnostics.HasError() {
+		return nil, diagnostics
+	}
+	return &client.MetricRuntimeConfig{ModelVersion: stringPointer(modelVersion), ThinkingEnabled: boolPointer(thinkingEnabled)}, diagnostics
 }
 
 func runtimeConfigIsExplicitlyEmpty(value types.Object) bool {
@@ -448,10 +460,26 @@ func targetConditionFromObject(ctx context.Context, value types.Object) (*client
 	if value.IsNull() || value.IsUnknown() {
 		return nil, nil
 	}
+	var diagnostics diag.Diagnostics
 	attributes := value.Attributes()
-	comparisonOperator := attributes["comparison_operator"].(types.String)
-	targetFloat := floatPointer(attributes["target_float"].(types.Float64))
-	targetValues, diagnostics := stringSet(ctx, attributes["target_values"].(types.Set))
+	comparisonOperator, ok := attributes["comparison_operator"].(types.String)
+	if !ok {
+		diagnostics.AddAttributeError(path.Root("target_condition").AtName("comparison_operator"), "Invalid target condition", fmt.Sprintf("Expected a string value, got %T.", attributes["comparison_operator"]))
+	}
+	targetFloatValue, ok := attributes["target_float"].(types.Float64)
+	if !ok {
+		diagnostics.AddAttributeError(path.Root("target_condition").AtName("target_float"), "Invalid target condition", fmt.Sprintf("Expected a number value, got %T.", attributes["target_float"]))
+	}
+	targetValuesValue, ok := attributes["target_values"].(types.Set)
+	if !ok {
+		diagnostics.AddAttributeError(path.Root("target_condition").AtName("target_values"), "Invalid target condition", fmt.Sprintf("Expected a set value, got %T.", attributes["target_values"]))
+	}
+	if diagnostics.HasError() {
+		return nil, diagnostics
+	}
+	targetFloat := floatPointer(targetFloatValue)
+	targetValues, setDiagnostics := stringSet(ctx, targetValuesValue)
+	diagnostics.Append(setDiagnostics...)
 	if comparisonOperator.IsUnknown() {
 		return nil, diagnostics
 	}
