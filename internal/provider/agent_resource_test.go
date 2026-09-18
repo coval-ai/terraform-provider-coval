@@ -126,14 +126,48 @@ func TestAgentStateUsesRemoteMetadataWhenAPIAddsFields(t *testing.T) {
 	}
 }
 
-func TestAgentStateUsesRemoteMetadataWhenConfiguredValueChanges(t *testing.T) {
+func TestAgentStateAfterMutationPreservesPlannedMetadataWhenAPIAddsFields(t *testing.T) {
+	t.Parallel()
+
+	planned := types.DynamicValue(types.ObjectValueMust(
+		map[string]attr.Type{"chat_endpoint": types.StringType},
+		map[string]attr.Value{"chat_endpoint": types.StringValue("https://example.com/chat")},
+	))
+	remote := client.Agent{
+		ID:              "abc123def456ghi789jklm",
+		CustomerAgentID: "support",
+		DisplayName:     "Support",
+		ModelType:       "MODEL_TYPE_CHAT_A2A",
+		Metadata:        json.RawMessage(`{"chat_endpoint":"https://example.com/chat","response_message_path":"result.text"}`),
+		Workflows:       json.RawMessage(`{}`),
+		CreateTime:      "2026-09-18T00:00:00Z",
+	}
+
+	state, diagnostics := agentResourceStateAfterMutation(context.Background(), remote, &agentResourceModel{Metadata: planned})
+	if diagnostics.HasError() {
+		t.Fatalf("diagnostics = %v", diagnostics)
+	}
+	if !state.Metadata.Equal(planned) {
+		t.Fatalf("metadata = %#v, want planned value %#v", state.Metadata, planned)
+	}
+
+	refreshed, diagnostics := agentResourceState(context.Background(), remote, &state)
+	if diagnostics.HasError() {
+		t.Fatalf("refresh diagnostics = %v", diagnostics)
+	}
+	if refreshed.Metadata.Equal(planned) {
+		t.Fatal("refresh hid metadata fields added by the API")
+	}
+}
+
+func TestAgentStateAfterMutationUsesRemoteMetadataWhenConfiguredValueChanges(t *testing.T) {
 	t.Parallel()
 
 	configured := types.DynamicValue(types.ObjectValueMust(
 		map[string]attr.Type{"chat_endpoint": types.StringType},
 		map[string]attr.Value{"chat_endpoint": types.StringValue("https://example.com/old")},
 	))
-	state, diagnostics := agentResourceState(context.Background(), client.Agent{
+	state, diagnostics := agentResourceStateAfterMutation(context.Background(), client.Agent{
 		ID:              "abc123def456ghi789jklm",
 		CustomerAgentID: "support",
 		DisplayName:     "Support",

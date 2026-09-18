@@ -312,6 +312,51 @@ func jsonValuesEqual(left json.RawMessage, right json.RawMessage) bool {
 	return leftErr == nil && rightErr == nil && reflect.DeepEqual(leftValue, rightValue)
 }
 
+func jsonObjectContains(actual json.RawMessage, expected json.RawMessage) bool {
+	decode := func(raw json.RawMessage) (map[string]any, error) {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+		var value map[string]any
+		if err := decoder.Decode(&value); err != nil {
+			return nil, err
+		}
+		return value, nil
+	}
+	actualValue, actualErr := decode(actual)
+	expectedValue, expectedErr := decode(expected)
+	return actualErr == nil && expectedErr == nil && jsonValueContains(actualValue, expectedValue)
+}
+
+func jsonValueContains(actual any, expected any) bool {
+	switch expectedValue := expected.(type) {
+	case map[string]any:
+		actualValue, ok := actual.(map[string]any)
+		if !ok {
+			return false
+		}
+		for key, expectedElement := range expectedValue {
+			actualElement, exists := actualValue[key]
+			if !exists || !jsonValueContains(actualElement, expectedElement) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		actualValue, ok := actual.([]any)
+		if !ok || len(actualValue) != len(expectedValue) {
+			return false
+		}
+		for index, expectedElement := range expectedValue {
+			if !jsonValueContains(actualValue[index], expectedElement) {
+				return false
+			}
+		}
+		return true
+	default:
+		return reflect.DeepEqual(actual, expected)
+	}
+}
+
 func terraformValueFromJSON(value any) (attr.Value, error) {
 	switch typed := value.(type) {
 	case nil:

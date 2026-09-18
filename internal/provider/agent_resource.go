@@ -234,7 +234,7 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		resp.Diagnostics.AddError("Unable to create Coval agent", err.Error())
 		return
 	}
-	state, diagnostics := agentResourceState(ctx, created, &plan)
+	state, diagnostics := agentResourceStateAfterMutation(ctx, created, &plan)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -283,7 +283,7 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		resp.Diagnostics.AddError("Unable to update Coval agent", err.Error())
 		return
 	}
-	state, diagnostics := agentResourceState(ctx, updated, &plan)
+	state, diagnostics := agentResourceStateAfterMutation(ctx, updated, &plan)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -385,20 +385,29 @@ func stringSliceOrEmpty(value *[]string) []string {
 }
 
 func agentResourceState(ctx context.Context, remote client.Agent, prior *agentResourceModel) (agentResourceModel, diag.Diagnostics) {
-	return agentState(ctx, remote, prior)
+	return agentState(ctx, remote, prior, false)
+}
+
+func agentResourceStateAfterMutation(ctx context.Context, remote client.Agent, plan *agentResourceModel) (agentResourceModel, diag.Diagnostics) {
+	return agentState(ctx, remote, plan, true)
 }
 
 func agentDataSourceState(ctx context.Context, remote client.Agent) (agentResourceModel, diag.Diagnostics) {
-	return agentState(ctx, remote, nil)
+	return agentState(ctx, remote, nil, false)
 }
 
-func agentState(ctx context.Context, remote client.Agent, prior *agentResourceModel) (agentResourceModel, diag.Diagnostics) {
+func agentState(ctx context.Context, remote client.Agent, prior *agentResourceModel, afterMutation bool) (agentResourceModel, diag.Diagnostics) {
 	var diagnostics diag.Diagnostics
 	attributes, err := nullableAgentObject(remote.Attributes, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Attributes }))
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent attributes", err.Error())
 	}
-	metadata, err := dynamicFromJSONObjectPreserving(remote.Metadata, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata }))
+	priorMetadata := priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Metadata })
+	metadataState := dynamicFromJSONObjectPreserving
+	if afterMutation {
+		metadataState = agentMetadataStateAfterMutation
+	}
+	metadata, err := metadataState(remote.Metadata, priorMetadata)
 	if err != nil {
 		diagnostics.AddError("Unable to decode agent metadata", err.Error())
 	}
@@ -449,6 +458,16 @@ func nullableAgentObject(raw json.RawMessage, prior types.Dynamic) (types.Dynami
 		return types.DynamicNull(), nil
 	}
 	return dynamicFromJSONObjectPreserving(raw, prior)
+}
+
+func agentMetadataStateAfterMutation(raw json.RawMessage, planned types.Dynamic) (types.Dynamic, error) {
+	if !planned.IsNull() && !planned.IsUnknown() && !planned.IsUnderlyingValueUnknown() {
+		plannedRaw, err := dynamicJSONObject(planned)
+		if err == nil && plannedRaw != nil && jsonObjectContains(raw, *plannedRaw) {
+			return planned, nil
+		}
+	}
+	return dynamicFromJSONObject(raw)
 }
 
 func nullableString(value *string) types.String {
