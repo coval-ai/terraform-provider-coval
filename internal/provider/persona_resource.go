@@ -437,14 +437,14 @@ func createPersonaInput(ctx context.Context, plan personaResourceModel) (client.
 		VoiceName:                plan.VoiceName.ValueString(),
 		LanguageCode:             plan.LanguageCode.ValueString(),
 		BackgroundSound:          stringPointer(plan.BackgroundSound),
-		BackgroundSoundVolume:    float64Pointer(plan.BackgroundSoundVolume),
-		VoiceVolume:              float64Pointer(plan.VoiceVolume),
-		VoiceSpeed:               float64Pointer(plan.VoiceSpeed),
-		WaitSeconds:              float64Pointer(plan.WaitSeconds),
+		BackgroundSoundVolume:    floatPointer(plan.BackgroundSoundVolume),
+		VoiceVolume:              floatPointer(plan.VoiceVolume),
+		VoiceSpeed:               floatPointer(plan.VoiceSpeed),
+		WaitSeconds:              floatPointer(plan.WaitSeconds),
 		ConversationInitiation:   stringPointer(plan.ConversationInitiation),
 		InterruptionRate:         stringPointer(plan.InterruptionRate),
 		MultiLanguageSTT:         boolPointer(plan.MultiLanguageSTT),
-		HoldMusicTimeoutSeconds:  float64Pointer(plan.HoldMusicTimeoutSeconds),
+		HoldMusicTimeoutSeconds:  floatPointer(plan.HoldMusicTimeoutSeconds),
 		SituateSpeaker:           stringPointer(plan.SituateSpeaker),
 		AudioDegradation:         audioDegradation,
 		Tags:                     tags,
@@ -481,22 +481,6 @@ func updatePersonaInput(ctx context.Context, plan personaResourceModel) (client.
 		AudioDegradation:         createInput.AudioDegradation,
 		Tags:                     tags,
 	}, diagnostics
-}
-
-func boolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueBool()
-	return &result
-}
-
-func float64Pointer(value types.Float64) *float64 {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueFloat64()
-	return &result
 }
 
 func personaMultiPhoneConfig(ctx context.Context, value types.Object) (*client.MultiPhoneConfig, diag.Diagnostics) {
@@ -561,14 +545,14 @@ func personaState(ctx context.Context, remote client.Persona) (personaResourceMo
 		Voice:                    nullableString(remote.Voice),
 		CustomVoiceID:            nullableString(remote.CustomVoiceID),
 		BackgroundSound:          nullableString(remote.BackgroundSound),
-		BackgroundSoundVolume:    nullableFloat64(remote.BackgroundSoundVolume),
-		VoiceVolume:              nullableFloat64(remote.VoiceVolume),
-		VoiceSpeed:               nullableFloat64(remote.VoiceSpeed),
-		WaitSeconds:              nullableFloat64(remote.WaitSeconds),
+		BackgroundSoundVolume:    nullableFloat(remote.BackgroundSoundVolume),
+		VoiceVolume:              nullableFloat(remote.VoiceVolume),
+		VoiceSpeed:               nullableFloat(remote.VoiceSpeed),
+		WaitSeconds:              nullableFloat(remote.WaitSeconds),
 		ConversationInitiation:   nullableString(remote.ConversationInitiation),
 		InterruptionRate:         types.StringValue(remote.InterruptionRate),
 		MultiLanguageSTT:         nullableBool(remote.MultiLanguageSTT),
-		HoldMusicTimeoutSeconds:  nullableFloat64(remote.HoldMusicTimeoutSeconds),
+		HoldMusicTimeoutSeconds:  nullableFloat(remote.HoldMusicTimeoutSeconds),
 		SituateSpeaker:           nullableString(remote.SituateSpeaker),
 		AudioDegradation:         audioDegradation,
 		Tags:                     tags,
@@ -600,25 +584,4 @@ func personaAudioDegradationState(remote *client.AudioDegradationConfig) (types.
 		"preset":         types.StringValue(remote.Preset),
 		"preset_version": presetVersion,
 	})
-}
-
-func nullableString(value *string) types.String {
-	if value == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(*value)
-}
-
-func nullableBool(value *bool) types.Bool {
-	if value == nil {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*value)
-}
-
-func nullableFloat64(value *float64) types.Float64 {
-	if value == nil {
-		return types.Float64Null()
-	}
-	return types.Float64Value(*value)
 }

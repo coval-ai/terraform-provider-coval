@@ -305,14 +305,6 @@ func updateTestSetInput(ctx context.Context, plan testSetResourceModel) (client.
 	}, diagnostics
 }
 
-func stringPointer(value types.String) *string {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueString()
-	return &result
-}
-
 func stringSet(ctx context.Context, value types.Set) (*[]string, diag.Diagnostics) {
 	if value.IsNull() || value.IsUnknown() {
 		return nil, nil
