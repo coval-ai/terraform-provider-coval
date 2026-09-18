@@ -151,12 +151,21 @@ func TestAgentStateAfterMutationPreservesPlannedMetadataWhenAPIAddsFields(t *tes
 		t.Fatalf("metadata = %#v, want planned value %#v", state.Metadata, planned)
 	}
 
+	serverAdditions, ok := agentMetadataServerAdditions(remote.Metadata, planned)
+	if !ok {
+		t.Fatal("metadata additions were not detected")
+	}
+	normalizedMetadata, err := jsonObjectWithoutMatchingAdditions(remote.Metadata, serverAdditions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	remote.Metadata = normalizedMetadata
 	refreshed, diagnostics := agentResourceState(context.Background(), remote, &state)
 	if diagnostics.HasError() {
 		t.Fatalf("refresh diagnostics = %v", diagnostics)
 	}
-	if refreshed.Metadata.Equal(planned) {
-		t.Fatal("refresh hid metadata fields added by the API")
+	if !refreshed.Metadata.Equal(planned) {
+		t.Fatalf("metadata after refresh = %#v, want planned value %#v", refreshed.Metadata, planned)
 	}
 }
 
@@ -181,6 +190,9 @@ func TestAgentStateAfterMutationUsesRemoteMetadataWhenConfiguredValueChanges(t *
 	}
 	if state.Metadata.Equal(configured) {
 		t.Fatal("metadata preserved a configured value that the API changed")
+	}
+	if _, ok := agentMetadataServerAdditions(json.RawMessage(`{"chat_endpoint":"https://example.com/new","api_default":true}`), configured); ok {
+		t.Fatal("changed configured metadata was classified as a server addition")
 	}
 }
 

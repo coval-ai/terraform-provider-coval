@@ -313,6 +313,11 @@ func jsonValuesEqual(left json.RawMessage, right json.RawMessage) bool {
 }
 
 func jsonObjectContains(actual json.RawMessage, expected json.RawMessage) bool {
+	_, ok := jsonObjectAdditions(actual, expected)
+	return ok
+}
+
+func jsonObjectAdditions(actual json.RawMessage, expected json.RawMessage) (json.RawMessage, bool) {
 	decode := func(raw json.RawMessage) (map[string]any, error) {
 		decoder := json.NewDecoder(bytes.NewReader(raw))
 		decoder.UseNumber()
@@ -324,37 +329,115 @@ func jsonObjectContains(actual json.RawMessage, expected json.RawMessage) bool {
 	}
 	actualValue, actualErr := decode(actual)
 	expectedValue, expectedErr := decode(expected)
-	return actualErr == nil && expectedErr == nil && jsonValueContains(actualValue, expectedValue)
+	if actualErr != nil || expectedErr != nil {
+		return nil, false
+	}
+	additions, ok := jsonValueAdditions(actualValue, expectedValue)
+	if !ok {
+		return nil, false
+	}
+	encoded, err := json.Marshal(additions)
+	return json.RawMessage(encoded), err == nil
 }
 
-func jsonValueContains(actual any, expected any) bool {
+func jsonValueAdditions(actual any, expected any) (any, bool) {
 	switch expectedValue := expected.(type) {
 	case map[string]any:
 		actualValue, ok := actual.(map[string]any)
 		if !ok {
-			return false
+			return nil, false
+		}
+		additions := make(map[string]any)
+		for key, actualElement := range actualValue {
+			if _, exists := expectedValue[key]; !exists {
+				additions[key] = actualElement
+			}
 		}
 		for key, expectedElement := range expectedValue {
 			actualElement, exists := actualValue[key]
-			if !exists || !jsonValueContains(actualElement, expectedElement) {
-				return false
+			if !exists {
+				return nil, false
+			}
+			nestedAdditions, contains := jsonValueAdditions(actualElement, expectedElement)
+			if !contains {
+				return nil, false
+			}
+			if nestedObject, ok := nestedAdditions.(map[string]any); !ok || len(nestedObject) > 0 {
+				if nestedAdditions != nil {
+					additions[key] = nestedAdditions
+				}
 			}
 		}
-		return true
+		return additions, true
 	case []any:
 		actualValue, ok := actual.([]any)
-		if !ok || len(actualValue) != len(expectedValue) {
-			return false
+		if !ok || !reflect.DeepEqual(actualValue, expectedValue) {
+			return nil, false
 		}
-		for index, expectedElement := range expectedValue {
-			if !jsonValueContains(actualValue[index], expectedElement) {
-				return false
-			}
-		}
-		return true
+		return nil, true
 	default:
-		return reflect.DeepEqual(actual, expected)
+		return nil, reflect.DeepEqual(actual, expected)
 	}
+}
+
+func jsonObjectWithoutMatchingAdditions(actual json.RawMessage, additions json.RawMessage) (json.RawMessage, error) {
+	decode := func(raw json.RawMessage) (map[string]any, error) {
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.UseNumber()
+		var value map[string]any
+		if err := decoder.Decode(&value); err != nil {
+			return nil, err
+		}
+		return value, nil
+	}
+	actualValue, err := decode(actual)
+	if err != nil {
+		return nil, fmt.Errorf("decode Coval JSON object: %w", err)
+	}
+	additionValue, err := decode(additions)
+	if err != nil {
+		return nil, fmt.Errorf("decode stored agent metadata additions: %w", err)
+	}
+	stripped, remove := jsonValueWithoutMatchingAdditions(actualValue, additionValue)
+	if remove {
+		stripped = map[string]any{}
+	}
+	encoded, err := json.Marshal(stripped)
+	if err != nil {
+		return nil, fmt.Errorf("encode normalized Coval JSON object: %w", err)
+	}
+	return json.RawMessage(encoded), nil
+}
+
+func jsonValueWithoutMatchingAdditions(actual any, additions any) (any, bool) {
+	additionObject, additionsAreObject := additions.(map[string]any)
+	if !additionsAreObject {
+		if reflect.DeepEqual(actual, additions) {
+			return nil, true
+		}
+		return actual, false
+	}
+	actualObject, actualIsObject := actual.(map[string]any)
+	if !actualIsObject {
+		return actual, false
+	}
+	result := make(map[string]any, len(actualObject))
+	for key, value := range actualObject {
+		result[key] = value
+	}
+	for key, addition := range additionObject {
+		actualElement, exists := result[key]
+		if !exists {
+			continue
+		}
+		stripped, remove := jsonValueWithoutMatchingAdditions(actualElement, addition)
+		if remove {
+			delete(result, key)
+			continue
+		}
+		result[key] = stripped
+	}
+	return result, len(result) == 0
 }
 
 func terraformValueFromJSON(value any) (attr.Value, error) {

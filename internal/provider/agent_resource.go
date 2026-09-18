@@ -30,6 +30,9 @@ var (
 	_ resource.ResourceWithIdentity    = &agentResource{}
 )
 
+// Private state records only fields the API added to the submitted metadata.
+const agentMetadataServerAdditionsPrivateKey = "agent_metadata_server_additions_v1"
+
 var agentModelTypes = []string{
 	"MODEL_TYPE_VOICE",
 	"MODEL_TYPE_OUTBOUND_VOICE",
@@ -239,6 +242,11 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
+	additions, _ := agentMetadataServerAdditions(created.Metadata, plan.Metadata)
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, agentMetadataServerAdditionsPrivateKey, additions)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
 	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: state.ID})...)
 }
@@ -257,6 +265,20 @@ func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval agent", err.Error())
 		return
+	}
+	serverAdditions, privateDiagnostics := req.Private.GetKey(ctx, agentMetadataServerAdditionsPrivateKey)
+	resp.Diagnostics.Append(privateDiagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	if len(serverAdditions) > 0 {
+		// Preserve unrelated remote additions as drift by removing only exact values
+		// recorded from the preceding create or update response.
+		remote.Metadata, err = jsonObjectWithoutMatchingAdditions(remote.Metadata, serverAdditions)
+		if err != nil {
+			resp.Diagnostics.AddError("Unable to normalize agent metadata", err.Error())
+			return
+		}
 	}
 	refreshed, diagnostics := agentResourceState(ctx, remote, &state)
 	resp.Diagnostics.Append(diagnostics...)
@@ -285,6 +307,11 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 	state, diagnostics := agentResourceStateAfterMutation(ctx, updated, &plan)
 	resp.Diagnostics.Append(diagnostics...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	additions, _ := agentMetadataServerAdditions(updated.Metadata, plan.Metadata)
+	resp.Diagnostics.Append(resp.Private.SetKey(ctx, agentMetadataServerAdditionsPrivateKey, additions)...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -468,6 +495,18 @@ func agentMetadataStateAfterMutation(raw json.RawMessage, planned types.Dynamic)
 		}
 	}
 	return dynamicFromJSONObject(raw)
+}
+
+func agentMetadataServerAdditions(raw json.RawMessage, planned types.Dynamic) ([]byte, bool) {
+	if planned.IsNull() || planned.IsUnknown() || planned.IsUnderlyingValueUnknown() {
+		return nil, false
+	}
+	plannedRaw, err := dynamicJSONObject(planned)
+	if err != nil || plannedRaw == nil {
+		return nil, false
+	}
+	additions, ok := jsonObjectAdditions(raw, *plannedRaw)
+	return additions, ok
 }
 
 func nullableString(value *string) types.String {
