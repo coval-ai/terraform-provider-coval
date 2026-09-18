@@ -53,7 +53,7 @@ func TestAgentResourceSchemaAndInput(t *testing.T) {
 		t.Fatal("metadata is nil")
 	}
 	if string(*input.Metadata) != `{"chat_endpoint":"https://example.com/chat"}` {
-		t.Fatalf("metadata = %s", json.RawMessage(*input.Metadata))
+		t.Fatalf("metadata = %s", *input.Metadata)
 	}
 }
 

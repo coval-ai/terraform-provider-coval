@@ -189,7 +189,7 @@ func listAllAgents(ctx context.Context, apiClient *client.Client, options client
 			return agents, nil
 		}
 		if _, exists := seenTokens[page.NextPageToken]; exists {
-			return nil, fmt.Errorf("Coval agents API repeated pagination token %q", page.NextPageToken)
+			return nil, fmt.Errorf("coval agents API repeated pagination token %q", page.NextPageToken)
 		}
 		seenTokens[page.NextPageToken] = struct{}{}
 		options.PageToken = page.NextPageToken
