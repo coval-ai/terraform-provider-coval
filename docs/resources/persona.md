@@ -53,7 +53,7 @@ resource "coval_persona" "support_customer" {
 - `interruption_rate` (String) How often the persona interrupts the agent.
 - `multi_language_stt` (Boolean) Whether multilingual speech-to-text is enabled.
 - `multi_phone_config` (Attributes) Caller-number selection. Omit it to let the simulation choose a random available number. (see [below for nested schema](#nestedatt--multi_phone_config))
-- `persona_prompt` (String) Instructions describing the persona's behavior and personality.
+- `persona_prompt` (String) Instructions describing the persona's behavior and personality. Required unless silent_mode is true; it can be cleared only while the persona remains silent.
 - `silent_mode` (Boolean) Whether the persona remains silent for the entire simulation.
 - `situate_speaker` (String) Persona speaker-placement preset.
 - `tags` (Set of String) Tags associated with the persona. Set [] to clear them.

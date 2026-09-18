@@ -118,7 +118,7 @@ func (r *personaResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Validators:          []validator.String{stringvalidator.LengthBetween(1, 200)},
 			},
 			"persona_prompt": schema.StringAttribute{
-				MarkdownDescription: "Instructions describing the persona's behavior and personality.",
+				MarkdownDescription: "Instructions describing the persona's behavior and personality. Required unless silent_mode is true; it can be cleared only while the persona remains silent.",
 				Optional:            true,
 			},
 			"voice_name": schema.StringAttribute{

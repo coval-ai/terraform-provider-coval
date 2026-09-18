@@ -62,6 +62,7 @@ func TestAccPersonaResource(t *testing.T) {
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(resourceName, "name", name+" updated"),
 					resource.TestCheckNoResourceAttr(resourceName, "persona_prompt"),
+					resource.TestCheckResourceAttr(resourceName, "silent_mode", "true"),
 					resource.TestCheckNoResourceAttr(resourceName, "background_sound"),
 					resource.TestCheckNoResourceAttr(resourceName, "background_sound_volume"),
 					resource.TestCheckNoResourceAttr(resourceName, "wait_seconds"),
@@ -126,8 +127,8 @@ func sweepPersonas(_ string) error {
 
 func testAccPersonaConfig(name string, cleared bool) string {
 	configuredName := name
+	personaBehavior := `persona_prompt = "You are a friendly customer testing the Terraform provider."`
 	optionalFields := `
-  persona_prompt             = "You are a friendly customer testing the Terraform provider."
   background_sound           = "office"
   background_sound_volume    = 0.3
   voice_volume               = 1.0
@@ -147,6 +148,7 @@ func testAccPersonaConfig(name string, cleared bool) string {
   tags = ["terraform", "acceptance"]`
 	if cleared {
 		configuredName += " updated"
+		personaBehavior = "silent_mode = true"
 		optionalFields = `
   interruption_rate = "NONE"
   tags              = []`
@@ -155,8 +157,9 @@ func testAccPersonaConfig(name string, cleared bool) string {
 	return fmt.Sprintf(`
 resource "coval_persona" "test" {
   name          = %s
-  voice_name    = "aria"
-  language_code = "en-US"
+  %s
+  voice_name     = "aria"
+  language_code  = "en-US"
 %s
 }
 
@@ -168,5 +171,5 @@ data "coval_personas" "matching" {
   filter     = %s
   depends_on = [coval_persona.test]
 }
-`, strconv.Quote(configuredName), optionalFields, strconv.Quote(filter))
+`, strconv.Quote(configuredName), personaBehavior, optionalFields, strconv.Quote(filter))
 }
