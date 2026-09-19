@@ -406,28 +406,6 @@ func metricExpectedBody(value types.Dynamic) (*json.RawMessage, error) {
 	return dynamicJSONValue(value)
 }
 
-func floatPointer(value types.Float64) *float64 {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueFloat64()
-	return &result
-}
-func intPointer(value types.Int64) *int64 {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueInt64()
-	return &result
-}
-func boolPointer(value types.Bool) *bool {
-	if value.IsNull() || value.IsUnknown() {
-		return nil
-	}
-	result := value.ValueBool()
-	return &result
-}
-
 func runtimeConfigFromObject(_ context.Context, value types.Object) (*client.MetricRuntimeConfig, diag.Diagnostics) {
 	if value.IsNull() || value.IsUnknown() {
 		return nil, nil
@@ -531,19 +509,19 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 	state := metricResourceModel{
 		Name: types.StringValue(remote.Name), ID: types.StringValue(remote.ID), MetricName: types.StringValue(remote.MetricName),
 		Description: types.StringValue(remote.Description), MetricType: types.StringValue(remote.MetricType), Evaluation: metricEvaluationValue(remote.Evaluation),
-		Prompt: nullableMetricString(remote.Prompt), EnabledTools: set(remote.EnabledTools), Categories: set(remote.Categories),
-		MinValue: nullableFloat(remote.MinValue), MaxValue: nullableFloat(remote.MaxValue), MetadataFieldType: nullableMetricString(remote.MetadataFieldType),
-		MetadataFieldKey: nullableMetricString(remote.MetadataFieldKey), RegexPattern: nullableMetricString(remote.RegexPattern), Role: metricRoleState(remote.Role, prior),
+		Prompt: nullableString(remote.Prompt), EnabledTools: set(remote.EnabledTools), Categories: set(remote.Categories),
+		MinValue: nullableFloat(remote.MinValue), MaxValue: nullableFloat(remote.MaxValue), MetadataFieldType: nullableString(remote.MetadataFieldType),
+		MetadataFieldKey: nullableString(remote.MetadataFieldKey), RegexPattern: nullableString(remote.RegexPattern), Role: metricRoleState(remote.Role, prior),
 		MinPauseDurationSeconds: nullableFloat(remote.MinPauseDurationSeconds), MaxSilenceDurationSeconds: nullableFloat(remote.MaxSilenceDurationSeconds),
 		MinSilenceGapSeconds: nullableFloat(remote.MinSilenceGapSeconds), FrequencyThreshold: nullableFloat(remote.FrequencyThreshold),
-		Direction: nullableMetricString(remote.Direction), SuccessSentiments: set(remote.SuccessSentiments), PercentAbove: nullableFloat(remote.PercentAbove),
-		SuccessEndReasons: set(remote.SuccessEndReasons), ObservationName: nullableMetricString(remote.ObservationName), ExpectedBody: expectedBody,
-		MatchPath: nullableMetricString(remote.MatchPath), MinVolumeChangeForPitchMisalignment: nullableFloat(remote.MinVolumeChangeForPitchMisalignment),
-		Threshold: nullableInt(remote.Threshold), Operator: nullableMetricString(remote.Operator), IVRFlow: ivrFlow, SQLQuery: nullableMetricString(remote.SQLQuery),
-		CriteriaSource: nullableMetricString(remote.CriteriaSource), CriteriaPath: nullableMetricString(remote.CriteriaPath), Criteria: set(remote.Criteria),
-		ReportingMethod: nullableMetricString(remote.ReportingMethod), BasePromptTemplate: nullableMetricString(remote.BasePromptTemplate),
+		Direction: nullableString(remote.Direction), SuccessSentiments: set(remote.SuccessSentiments), PercentAbove: nullableFloat(remote.PercentAbove),
+		SuccessEndReasons: set(remote.SuccessEndReasons), ObservationName: nullableString(remote.ObservationName), ExpectedBody: expectedBody,
+		MatchPath: nullableString(remote.MatchPath), MinVolumeChangeForPitchMisalignment: nullableFloat(remote.MinVolumeChangeForPitchMisalignment),
+		Threshold: nullableInt(remote.Threshold), Operator: nullableString(remote.Operator), IVRFlow: ivrFlow, SQLQuery: nullableString(remote.SQLQuery),
+		CriteriaSource: nullableString(remote.CriteriaSource), CriteriaPath: nullableString(remote.CriteriaPath), Criteria: set(remote.Criteria),
+		ReportingMethod: nullableString(remote.ReportingMethod), BasePromptTemplate: nullableString(remote.BasePromptTemplate),
 		IncludeTraces: nullableBool(remote.IncludeTraces), RuntimeConfig: runtimeConfigValue(remote.RuntimeConfig), TargetCondition: targetConditionValue(ctx, remote.TargetCondition, &diagnostics),
-		Tags: tags, CreatedBy: nullableMetricString(remote.CreatedBy), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: nullableMetricString(remote.UpdateTime),
+		Tags: tags, CreatedBy: nullableString(remote.CreatedBy), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: nullableString(remote.UpdateTime),
 		CurrentVersion: currentMetricVersionValue(remote.CurrentVersion),
 	}
 	return state, diagnostics
@@ -555,13 +533,6 @@ func priorMetricDynamic(prior *metricResourceModel, selectValue func(*metricReso
 	}
 	return selectValue(prior)
 }
-func nullableMetricString(value *string) types.String {
-	if value == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(*value)
-}
-
 func metricRoleState(value *string, prior *metricResourceModel) types.String {
 	if value == nil {
 		return types.StringNull()
@@ -582,30 +553,11 @@ func metricRoleState(value *string, prior *metricResourceModel) types.String {
 	return types.StringValue(*value)
 }
 
-func nullableFloat(value *float64) types.Float64 {
-	if value == nil {
-		return types.Float64Null()
-	}
-	return types.Float64Value(*value)
-}
-func nullableInt(value *int64) types.Int64 {
-	if value == nil {
-		return types.Int64Null()
-	}
-	return types.Int64Value(*value)
-}
-func nullableBool(value *bool) types.Bool {
-	if value == nil {
-		return types.BoolNull()
-	}
-	return types.BoolValue(*value)
-}
-
 func runtimeConfigValue(value *client.MetricRuntimeConfig) types.Object {
 	if value == nil {
 		return types.ObjectNull(metricRuntimeConfigAttributeTypes)
 	}
-	result, _ := types.ObjectValue(metricRuntimeConfigAttributeTypes, map[string]attr.Value{"model_version": nullableMetricString(value.ModelVersion), "thinking_enabled": nullableBool(value.ThinkingEnabled)})
+	result, _ := types.ObjectValue(metricRuntimeConfigAttributeTypes, map[string]attr.Value{"model_version": nullableString(value.ModelVersion), "thinking_enabled": nullableBool(value.ThinkingEnabled)})
 	return result
 }
 
@@ -628,7 +580,7 @@ func metricEvaluationValue(value *client.MetricEvaluation) types.Object {
 	if value == nil {
 		return types.ObjectNull(metricEvaluationAttributeTypes)
 	}
-	result, _ := types.ObjectValue(metricEvaluationAttributeTypes, map[string]attr.Value{"evaluator": types.StringValue(value.Evaluator), "output_type": nullableMetricString(value.OutputType), "output_type_source": types.StringValue(value.OutputTypeSource), "semantic_type": nullableMetricString(value.SemanticType), "semantic_type_source": types.StringValue(value.SemanticTypeSource)})
+	result, _ := types.ObjectValue(metricEvaluationAttributeTypes, map[string]attr.Value{"evaluator": types.StringValue(value.Evaluator), "output_type": nullableString(value.OutputType), "output_type_source": types.StringValue(value.OutputTypeSource), "semantic_type": nullableString(value.SemanticType), "semantic_type_source": types.StringValue(value.SemanticTypeSource)})
 	return result
 }
 

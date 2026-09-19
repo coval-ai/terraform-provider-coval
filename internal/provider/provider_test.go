@@ -125,12 +125,13 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 
 	provider := &CovalProvider{}
 	resources := provider.Resources(context.Background())
-	if len(resources) != 4 {
-		t.Fatalf("Resources() returned %d entries, want 4", len(resources))
+	if len(resources) != 5 {
+		t.Fatalf("Resources() returned %d entries, want 5", len(resources))
 	}
 	wantResources := map[string]bool{
 		"coval_test_set":  true,
 		"coval_test_case": true,
+		"coval_persona":   true,
 		"coval_agent":     true,
 		"coval_metric":    true,
 	}
@@ -144,14 +145,16 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 	}
 
 	dataSources := provider.DataSources(context.Background())
-	if len(dataSources) != 8 {
-		t.Fatalf("DataSources() returned %d entries, want 8", len(dataSources))
+	if len(dataSources) != 10 {
+		t.Fatalf("DataSources() returned %d entries, want 10", len(dataSources))
 	}
 	wantDataSources := map[string]bool{
 		"coval_test_set":   true,
 		"coval_test_sets":  true,
 		"coval_test_case":  true,
 		"coval_test_cases": true,
+		"coval_persona":    true,
+		"coval_personas":   true,
 		"coval_agent":      true,
 		"coval_agents":     true,
 		"coval_metric":     true,

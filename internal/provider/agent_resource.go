@@ -508,10 +508,3 @@ func agentMetadataServerAdditions(raw json.RawMessage, planned types.Dynamic) ([
 	additions, ok := jsonObjectAdditions(raw, *plannedRaw)
 	return additions, ok
 }
-
-func nullableString(value *string) types.String {
-	if value == nil {
-		return types.StringNull()
-	}
-	return types.StringValue(*value)
-}

@@ -229,6 +229,13 @@ func dynamicFromJSONObject(raw json.RawMessage) (types.Dynamic, error) {
 	return types.DynamicValue(value), nil
 }
 
+func dynamicFromNullableJSONObject(raw json.RawMessage) (types.Dynamic, error) {
+	if len(raw) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return types.DynamicNull(), nil
+	}
+	return dynamicFromJSONObject(raw)
+}
+
 func dynamicFromJSONObjectPreserving(raw json.RawMessage, prior types.Dynamic) (types.Dynamic, error) {
 	if !prior.IsNull() && !prior.IsUnknown() && !prior.IsUnderlyingValueUnknown() {
 		priorRaw, err := dynamicJSONObject(prior)
