@@ -27,6 +27,7 @@ data "coval_metric" "resolution" {
 
 ### Read-Only
 
+- `aggregation_method` (String) Aggregation method for custom trace or SQL float values.
 - `base_prompt_template` (String) Composite prompt template.
 - `categories` (Set of String) Classification categories.
 - `create_time` (String) RFC 3339 creation timestamp.
@@ -69,6 +70,7 @@ data "coval_metric" "resolution" {
 - `tags` (Set of String) Metric tags.
 - `target_condition` (Attributes) (see [below for nested schema](#nestedatt--target_condition))
 - `threshold` (Number) Integer threshold.
+- `unit` (String) Display unit for custom trace or SQL float values.
 - `update_time` (String) RFC 3339 update timestamp.
 
 <a id="nestedatt--current_version"></a>

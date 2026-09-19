@@ -41,6 +41,7 @@ data "coval_metrics" "production" {
 
 Read-Only:
 
+- `aggregation_method` (String)
 - `base_prompt_template` (String)
 - `categories` (Set of String)
 - `create_time` (String)
@@ -78,4 +79,5 @@ Read-Only:
 - `success_sentiments` (Set of String)
 - `tags` (Set of String)
 - `threshold` (Number)
+- `unit` (String)
 - `update_time` (String)

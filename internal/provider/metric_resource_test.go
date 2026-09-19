@@ -57,6 +57,39 @@ func TestMetricResourceSchemaAndInput(t *testing.T) {
 	}
 }
 
+func TestSQLMetricAggregationAndUnitRoundTrip(t *testing.T) {
+	t.Parallel()
+	var response resource.SchemaResponse
+	(&metricResource{}).Schema(t.Context(), resource.SchemaRequest{}, &response)
+	for _, name := range []string{"aggregation_method", "unit"} {
+		attribute, ok := response.Schema.Attributes[name].(schema.StringAttribute)
+		if !ok || !attribute.Optional || !attribute.Computed {
+			t.Fatalf("%s must be an optional, computed string", name)
+		}
+	}
+	plan := metricResourceModel{
+		MetricName: types.StringValue("Question Count"), Description: types.StringValue("Counts questions"),
+		MetricType: types.StringValue("METRIC_SQL_FLOAT"), SQLQuery: types.StringValue("SELECT 1 AS value, 0 AS start_offset_milliseconds"),
+		AggregationMethod: types.StringValue("SUM"), Unit: types.StringValue("count"),
+		RuntimeConfig: types.ObjectNull(metricRuntimeConfigAttributeTypes), ExpectedBody: types.DynamicNull(), IVRFlow: types.DynamicNull(),
+		EnabledTools: types.SetNull(types.StringType), Categories: types.SetNull(types.StringType),
+		SuccessSentiments: types.SetNull(types.StringType), SuccessEndReasons: types.SetNull(types.StringType),
+		Criteria: types.SetNull(types.StringType), Tags: types.SetNull(types.StringType),
+	}
+	input, diagnostics := metricInput(t.Context(), plan)
+	if diagnostics.HasError() || input.AggregationMethod == nil || *input.AggregationMethod != "SUM" || input.Unit == nil || *input.Unit != "count" {
+		t.Fatalf("input = %#v, diagnostics = %v", input, diagnostics)
+	}
+	method, unit := "SUM", "count"
+	state, diagnostics := metricResourceState(t.Context(), client.Metric{
+		Name: "metrics/example-metric", ID: "example-metric", MetricName: "Question Count", Description: "Counts questions",
+		MetricType: "METRIC_SQL_FLOAT", AggregationMethod: &method, Unit: &unit, Tags: []string{}, CreateTime: "2026-01-01T00:00:00Z",
+	}, &plan)
+	if diagnostics.HasError() || state.AggregationMethod.ValueString() != "SUM" || state.Unit.ValueString() != "count" {
+		t.Fatalf("state = %#v, diagnostics = %v", state, diagnostics)
+	}
+}
+
 func TestMetricTargetConditionShapes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

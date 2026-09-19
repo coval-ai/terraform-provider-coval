@@ -108,6 +108,8 @@ type metricResourceModel struct {
 	Operator                            types.String  `tfsdk:"operator"`
 	IVRFlow                             types.Dynamic `tfsdk:"ivr_flow"`
 	SQLQuery                            types.String  `tfsdk:"sql_query"`
+	AggregationMethod                   types.String  `tfsdk:"aggregation_method"`
+	Unit                                types.String  `tfsdk:"unit"`
 	CriteriaSource                      types.String  `tfsdk:"criteria_source"`
 	CriteriaPath                        types.String  `tfsdk:"criteria_path"`
 	Criteria                            types.Set     `tfsdk:"criteria"`
@@ -178,6 +180,8 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"operator":             optionalString("Comparison operator used with threshold.", stringvalidator.OneOf("<", "<=", ">", ">=", "==", "!=")),
 			"ivr_flow":             schema.DynamicAttribute{MarkdownDescription: "IVR flow JSON object for IVR flow-adherence metrics.", Optional: true, Computed: true, PlanModifiers: []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()}},
 			"sql_query":            optionalString("SQL query used by a SQL float metric.", stringvalidator.LengthAtMost(50000)),
+			"aggregation_method":   optionalString("Aggregation method for custom trace values or a SQL float metric. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; the API defaults to AVERAGE."),
+			"unit":                 optionalString("Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.", stringvalidator.LengthAtMost(32)),
 			"criteria_source":      optionalString("Source used by a composite-evaluation metric.", stringvalidator.OneOf("test_case", "test_case_attribute", "metric_metadata")),
 			"criteria_path":        optionalString("Path to criteria on the selected source.", stringvalidator.LengthAtMost(200)),
 			"criteria":             optionalSet("Literal criteria for a composite-evaluation metric."),
@@ -374,6 +378,7 @@ func metricInput(ctx context.Context, plan metricResourceModel) (client.CreateMe
 		SuccessEndReasons: set(plan.SuccessEndReasons), ObservationName: stringPointer(plan.ObservationName), ExpectedBody: expectedBody,
 		MatchPath: stringPointer(plan.MatchPath), MinVolumeChangeForPitchMisalignment: floatPointer(plan.MinVolumeChangeForPitchMisalignment),
 		Threshold: intPointer(plan.Threshold), Operator: stringPointer(plan.Operator), IVRFlow: ivrFlow, SQLQuery: stringPointer(plan.SQLQuery),
+		AggregationMethod: stringPointer(plan.AggregationMethod), Unit: stringPointer(plan.Unit),
 		CriteriaSource: stringPointer(plan.CriteriaSource), CriteriaPath: stringPointer(plan.CriteriaPath), Criteria: set(plan.Criteria),
 		ReportingMethod: stringPointer(plan.ReportingMethod), BasePromptTemplate: stringPointer(plan.BasePromptTemplate),
 		IncludeTraces: boolPointer(plan.IncludeTraces), RuntimeConfig: runtimeConfig, TargetCondition: targetCondition, Tags: set(plan.Tags),
@@ -518,6 +523,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		SuccessEndReasons: set(remote.SuccessEndReasons), ObservationName: nullableString(remote.ObservationName), ExpectedBody: expectedBody,
 		MatchPath: nullableString(remote.MatchPath), MinVolumeChangeForPitchMisalignment: nullableFloat(remote.MinVolumeChangeForPitchMisalignment),
 		Threshold: nullableInt(remote.Threshold), Operator: nullableString(remote.Operator), IVRFlow: ivrFlow, SQLQuery: nullableString(remote.SQLQuery),
+		AggregationMethod: nullableString(remote.AggregationMethod), Unit: nullableString(remote.Unit),
 		CriteriaSource: nullableString(remote.CriteriaSource), CriteriaPath: nullableString(remote.CriteriaPath), Criteria: set(remote.Criteria),
 		ReportingMethod: nullableString(remote.ReportingMethod), BasePromptTemplate: nullableString(remote.BasePromptTemplate),
 		IncludeTraces: nullableBool(remote.IncludeTraces), RuntimeConfig: runtimeConfigValue(remote.RuntimeConfig), TargetCondition: targetConditionValue(ctx, remote.TargetCondition, &diagnostics),
