@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.2.0...v1.3.0) (2026-09-19)
+
+### Features
+
+* manage personas ([#6](https://github.com/coval-ai/terraform-provider-coval/issues/6)) ([fdb1fba](https://github.com/coval-ai/terraform-provider-coval/commit/fdb1fbadf21643f2689238950ea267dbbe87d001))
+
 ## [1.2.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.1.0...v1.2.0) (2026-09-18)
 
 ### Features
