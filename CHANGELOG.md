@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.3.0...v1.4.0) (2026-09-20)
+
+### Features
+
+* **metric:** preserve SQL aggregation and unit ([#9](https://github.com/coval-ai/terraform-provider-coval/issues/9)) ([fe3e391](https://github.com/coval-ai/terraform-provider-coval/commit/fe3e391703e95b9d3c0f821aeb4e11e410670e73))
+
 ## [1.3.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.2.0...v1.3.0) (2026-09-19)
 
 ### Features
