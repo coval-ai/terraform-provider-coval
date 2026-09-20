@@ -74,6 +74,41 @@ func TestMetricLifecycleRequests(t *testing.T) {
 	}
 }
 
+func TestSQLMetricAggregationAndUnitRequests(t *testing.T) {
+	t.Parallel()
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body["aggregation_method"] != "SUM" || body["unit"] != "count" {
+			t.Fatalf("%s body = %#v", request.Method, body)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"metric":{"id":"example-metric","aggregation_method":"SUM","unit":"count"}}`))
+	}))
+	defer server.Close()
+	apiClient, err := New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, unit := "SUM", "count"
+	input := CreateMetricInput{MetricName: "Question Count", Description: "Counts questions", MetricType: "METRIC_SQL_FLOAT", AggregationMethod: &method, Unit: &unit}
+	created, err := apiClient.CreateMetric(t.Context(), input)
+	if err != nil || created.AggregationMethod == nil || *created.AggregationMethod != method || created.Unit == nil || *created.Unit != unit {
+		t.Fatalf("CreateMetric() = %#v, %v", created, err)
+	}
+	updated, err := apiClient.UpdateMetric(t.Context(), created.ID, UpdateMetricInput{CreateMetricInput: input})
+	if err != nil || updated.AggregationMethod == nil || *updated.AggregationMethod != method || updated.Unit == nil || *updated.Unit != unit {
+		t.Fatalf("UpdateMetric() = %#v, %v", updated, err)
+	}
+	if requests != 2 {
+		t.Fatalf("requests = %d, want 2", requests)
+	}
+}
+
 func TestListMetricsEncodesPublicFilters(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {

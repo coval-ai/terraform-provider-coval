@@ -39,6 +39,7 @@ resource "coval_metric" "resolution" {
 
 ### Optional
 
+- `aggregation_method` (String) Aggregation method for custom trace values or a SQL float metric. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; the API defaults to AVERAGE.
 - `base_prompt_template` (String) Custom per-criterion evaluation prompt template.
 - `categories` (Set of String) Classification categories for categorical metrics.
 - `criteria` (Set of String) Literal criteria for a composite-evaluation metric.
@@ -73,6 +74,7 @@ resource "coval_metric" "resolution" {
 - `tags` (Set of String) Tags associated with the metric. Set [] to clear them.
 - `target_condition` (Attributes) Rule that determines which metric output counts as a success. (see [below for nested schema](#nestedatt--target_condition))
 - `threshold` (Number) Integer threshold used by threshold-based metrics.
+- `unit` (String) Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.
 
 ### Read-Only
 
