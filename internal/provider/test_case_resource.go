@@ -245,6 +245,7 @@ func (r *testCaseResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 
 	plan = testCasePlanForConfig(config, plan)
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
+	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func testCasePlanForConfig(config testCaseResourceModel, plan testCaseResourceModel) testCaseResourceModel {

@@ -31,6 +31,7 @@ var (
 	_ resource.ResourceWithConfigure      = &personaResource{}
 	_ resource.ResourceWithImportState    = &personaResource{}
 	_ resource.ResourceWithIdentity       = &personaResource{}
+	_ resource.ResourceWithModifyPlan     = &personaResource{}
 	_ resource.ResourceWithValidateConfig = &personaResource{}
 
 	multiPhoneConfigAttributeTypes = map[string]attr.Type{
@@ -278,6 +279,13 @@ func personaTagFilterValidators() []validator.Set {
 		setvalidator.SizeAtMost(20),
 		setvalidator.ValueStringsAre(stringvalidator.LengthAtMost(200)),
 	}
+}
+
+func (r *personaResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	useStateForUnchangedPlan(ctx, req, resp,
+		path.Root("update_time"),
+		path.Root("audio_degradation").AtName("preset_version"),
+	)
 }
 
 func (r *personaResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {

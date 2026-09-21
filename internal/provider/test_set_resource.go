@@ -27,6 +27,7 @@ var (
 	_ resource.ResourceWithConfigure   = &testSetResource{}
 	_ resource.ResourceWithImportState = &testSetResource{}
 	_ resource.ResourceWithIdentity    = &testSetResource{}
+	_ resource.ResourceWithModifyPlan  = &testSetResource{}
 )
 
 type testSetResource struct {
@@ -150,6 +151,13 @@ func testSetTagValidators() []validator.Set {
 			stringvalidator.RegexMatches(regexp.MustCompile(`\S`), "must contain at least one non-whitespace character"),
 		),
 	}
+}
+
+func (r *testSetResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	useStateForUnchangedPlan(ctx, req, resp,
+		path.Root("test_case_count"),
+		path.Root("update_time"),
+	)
 }
 
 func (r *testSetResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {

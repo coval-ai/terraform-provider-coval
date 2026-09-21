@@ -35,6 +35,7 @@ var (
 	_ resource.ResourceWithConfigure   = &metricResource{}
 	_ resource.ResourceWithImportState = &metricResource{}
 	_ resource.ResourceWithIdentity    = &metricResource{}
+	_ resource.ResourceWithModifyPlan  = &metricResource{}
 )
 
 var metricTypes = []string{
@@ -236,6 +237,17 @@ func currentMetricVersionSchema() schema.SingleNestedAttribute {
 	return schema.SingleNestedAttribute{MarkdownDescription: "Current live metric version.", Computed: true, Attributes: map[string]schema.Attribute{
 		"ulid": schema.StringAttribute{Computed: true}, "version_number": schema.Int64Attribute{Computed: true}, "change_type": schema.StringAttribute{Computed: true},
 	}}
+}
+
+func (r *metricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	useStateForUnchangedPlan(ctx, req, resp,
+		path.Root("created_by"),
+		path.Root("evaluation"),
+		path.Root("update_time"),
+		path.Root("current_version"),
+		path.Root("runtime_config").AtName("model_version"),
+		path.Root("runtime_config").AtName("thinking_enabled"),
+	)
 }
 
 func (r *metricResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
