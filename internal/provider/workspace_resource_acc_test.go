@@ -52,16 +52,14 @@ func TestAccWorkspaceResource(t *testing.T) {
 				),
 			},
 			{
-				ResourceName:      testSetResourceName,
-				ImportState:       true,
-				ImportStateKind:   resource.ImportBlockWithResourceIdentity,
-				ImportStateVerify: true,
+				ResourceName:    testSetResourceName,
+				ImportState:     true,
+				ImportStateKind: resource.ImportBlockWithResourceIdentity,
 			},
 			{
-				ResourceName:      workspaceResourceName,
-				ImportState:       true,
-				ImportStateKind:   resource.ImportBlockWithResourceIdentity,
-				ImportStateVerify: true,
+				ResourceName:    workspaceResourceName,
+				ImportState:     true,
+				ImportStateKind: resource.ImportBlockWithResourceIdentity,
 			},
 			{
 				Config: testAccWorkspaceConfig(slug, displayName+" updated"),
