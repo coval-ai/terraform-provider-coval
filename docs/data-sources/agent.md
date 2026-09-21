@@ -25,6 +25,10 @@ data "coval_agent" "support" {
 
 - `id` (String) Agent ID.
 
+### Optional
+
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
+
 ### Read-Only
 
 - `attributes` (Dynamic) Free-form JSON agent attributes.

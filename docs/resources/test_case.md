@@ -55,6 +55,7 @@ resource "coval_test_case" "refund_policy" {
 - `script_turns` (Dynamic) Non-empty ordered JSON array required for SCRIPT test cases. Each turn is a string, a text object, a DTMF object, or a skip object. Omit it for other input types.
 - `simulation_metadata_input` (Dynamic) Arbitrary JSON object containing simulation metadata. The legacy nested script_turns key is not supported; use the top-level script_turns attribute instead. Set {} to clear it.
 - `user_notes` (String) User-provided notes about the test case. Set an empty string to clear them.
+- `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 
@@ -84,6 +85,10 @@ import {
 #### Required
 
 - `id` (String)
+
+#### Optional
+
+- `workspace_id` (String)
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

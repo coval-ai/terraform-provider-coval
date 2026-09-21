@@ -177,3 +177,31 @@ func TestDoPropagatesContextCancellation(t *testing.T) {
 		t.Fatalf("Do() error = %v, want context.Canceled", err)
 	}
 }
+
+func TestForWorkspaceScopesOnlyTheDerivedClient(t *testing.T) {
+	t.Parallel()
+
+	headers := make(chan string, 2)
+	transport := roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		headers <- request.Header.Get("X-Coval-Workspace-Id")
+		return testResponse(http.StatusOK, `{}`, nil), nil
+	})
+	apiClient, err := New("secret", DefaultBaseURL, WithHTTPClient(&http.Client{Transport: transport}))
+	if err != nil {
+		t.Fatalf("New(): %v", err)
+	}
+
+	if err := apiClient.ForWorkspace(" workspace-1 ").Do(context.Background(), http.MethodGet, "widgets", nil, nil); err != nil {
+		t.Fatalf("scoped Do(): %v", err)
+	}
+	if err := apiClient.Do(context.Background(), http.MethodGet, "widgets", nil, nil); err != nil {
+		t.Fatalf("base Do(): %v", err)
+	}
+
+	if got := <-headers; got != "workspace-1" {
+		t.Errorf("scoped workspace header = %q, want workspace-1", got)
+	}
+	if got := <-headers; got != "" {
+		t.Errorf("base workspace header = %q, want empty", got)
+	}
+}

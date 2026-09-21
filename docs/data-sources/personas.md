@@ -28,6 +28,7 @@ data "coval_personas" "support" {
 - `filter` (String) Optional public API filter expression. Quote string values containing spaces.
 - `order_by` (String) Optional ordering expression using create_time, update_time, or name.
 - `tag_filters` (Set of String) Optional tags that every returned persona must have.
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 

@@ -29,9 +29,10 @@ type sleepFunc func(context.Context, time.Duration) error
 
 // Client is an authenticated Coval API client.
 type Client struct {
-	apiKey     string
-	baseURL    *url.URL
-	httpClient *http.Client
+	apiKey      string
+	baseURL     *url.URL
+	httpClient  *http.Client
+	workspaceID string
 
 	maxAttempts int
 	baseDelay   time.Duration
@@ -39,6 +40,13 @@ type Client struct {
 	jitter      func() float64
 	now         func() time.Time
 	sleep       sleepFunc
+}
+
+// ForWorkspace returns an independent client that scopes requests to workspaceID.
+func (c *Client) ForWorkspace(workspaceID string) *Client {
+	derived := *c
+	derived.workspaceID = strings.TrimSpace(workspaceID)
+	return &derived
 }
 
 // Option customizes a Client.
@@ -112,6 +120,9 @@ func (c *Client) Do(ctx context.Context, method string, requestPath string, requ
 
 		// Preserve the lowercase spelling required by the public API contract.
 		request.Header["x-api-key"] = []string{c.apiKey}
+		if c.workspaceID != "" {
+			request.Header.Set("X-Coval-Workspace-Id", c.workspaceID)
+		}
 		request.Header.Set("Accept", "application/json")
 		if requestBody != nil {
 			request.Header.Set("Content-Type", "application/json")

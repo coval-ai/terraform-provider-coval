@@ -28,6 +28,7 @@ data "coval_test_sets" "support" {
 - `filter` (String) Optional public API filter expression. Quote string values.
 - `order_by` (String) Optional ordering expression, such as -create_time.
 - `tag_filters` (Set of String) Optional tags that every returned test set must have.
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 

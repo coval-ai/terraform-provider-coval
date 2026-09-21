@@ -25,6 +25,10 @@ data "coval_metric" "resolution" {
 
 - `id` (String) Metric ID.
 
+### Optional
+
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
+
 ### Read-Only
 
 - `aggregation_method` (String) Aggregation method for custom trace or SQL float values.

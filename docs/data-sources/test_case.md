@@ -25,6 +25,10 @@ data "coval_test_case" "refund_policy" {
 
 - `id` (String) Test-case ID.
 
+### Optional
+
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
+
 ### Read-Only
 
 - `create_time` (String) RFC 3339 creation timestamp.

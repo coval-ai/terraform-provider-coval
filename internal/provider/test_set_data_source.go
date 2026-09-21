@@ -33,6 +33,7 @@ func (d *testSetDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Coval test set by ID.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Test-set ID.",
 				Required:            true,
@@ -105,12 +106,12 @@ func (d *testSetDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := d.client.GetTestSet(ctx, config.ID.ValueString())
+	remote, err := clientForWorkspace(d.client, config.WorkspaceID).GetTestSet(ctx, config.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval test set", err.Error())
 		return
 	}
-	state, diagnostics := testSetDataSourceState(ctx, remote)
+	state, diagnostics := testSetDataSourceState(ctx, remote, &config)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

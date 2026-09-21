@@ -49,6 +49,7 @@ type personaResource struct {
 
 type personaResourceModel struct {
 	ID                       types.String  `tfsdk:"id"`
+	WorkspaceID              types.String  `tfsdk:"workspace_id"`
 	ResourceName             types.String  `tfsdk:"resource_name"`
 	Name                     types.String  `tfsdk:"name"`
 	PersonaPrompt            types.String  `tfsdk:"persona_prompt"`
@@ -77,7 +78,8 @@ type personaResourceModel struct {
 }
 
 type personaIdentityModel struct {
-	ID types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 
 type multiPhoneConfigModel struct {
@@ -107,6 +109,7 @@ func (r *personaResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"workspace_id": workspaceResourceAttribute(),
 			"resource_name": schema.StringAttribute{
 				MarkdownDescription: "Canonical API resource name.",
 				Computed:            true,
@@ -283,7 +286,8 @@ func personaTagFilterValidators() []validator.Set {
 func (r *personaResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{RequiredForImport: true},
+			"id":           identityschema.StringAttribute{RequiredForImport: true},
+			"workspace_id": identityschema.StringAttribute{OptionalForImport: true},
 		},
 	}
 }
@@ -332,18 +336,19 @@ func (r *personaResource) Create(ctx context.Context, req resource.CreateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	created, err := r.client.CreatePersona(ctx, input)
+	created, err := clientForWorkspace(r.client, plan.WorkspaceID).CreatePersona(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Coval persona", err.Error())
 		return
 	}
 	state, diagnostics := personaState(ctx, created)
+	state.WorkspaceID = plan.WorkspaceID
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *personaResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -353,7 +358,7 @@ func (r *personaResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	remote, err := r.client.GetPersona(ctx, state.ID.ValueString())
+	remote, err := clientForWorkspace(r.client, state.WorkspaceID).GetPersona(ctx, state.ID.ValueString())
 	if client.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -363,12 +368,13 @@ func (r *personaResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 	refreshed, diagnostics := personaState(ctx, remote)
+	refreshed.WorkspaceID = state.WorkspaceID
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &refreshed)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: refreshed.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: refreshed.ID, WorkspaceID: refreshed.WorkspaceID})...)
 }
 
 func (r *personaResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -383,18 +389,19 @@ func (r *personaResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdatePersona(ctx, plan.ID.ValueString(), input)
+	updated, err := clientForWorkspace(r.client, plan.WorkspaceID).UpdatePersona(ctx, plan.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Coval persona", err.Error())
 		return
 	}
 	state, diagnostics := personaState(ctx, updated)
+	state.WorkspaceID = plan.WorkspaceID
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, personaIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *personaResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -403,13 +410,13 @@ func (r *personaResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeletePersona(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+	if err := clientForWorkspace(r.client, state.WorkspaceID).DeletePersona(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Coval persona", err.Error())
 	}
 }
 
 func (r *personaResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	importStateWithWorkspaceIdentity(ctx, req, resp)
 }
 
 func createPersonaInput(ctx context.Context, plan personaResourceModel) (client.CreatePersonaInput, diag.Diagnostics) {

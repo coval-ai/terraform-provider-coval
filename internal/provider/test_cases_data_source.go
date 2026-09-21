@@ -21,9 +21,10 @@ type testCasesDataSource struct {
 }
 
 type testCasesDataSourceModel struct {
-	Filter    types.String           `tfsdk:"filter"`
-	OrderBy   types.String           `tfsdk:"order_by"`
-	TestCases []testCaseSummaryModel `tfsdk:"test_cases"`
+	WorkspaceID types.String           `tfsdk:"workspace_id"`
+	Filter      types.String           `tfsdk:"filter"`
+	OrderBy     types.String           `tfsdk:"order_by"`
+	TestCases   []testCaseSummaryModel `tfsdk:"test_cases"`
 }
 
 type testCaseSummaryModel struct {
@@ -51,6 +52,7 @@ func (d *testCasesDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists Coval test cases visible to the configured API key.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"filter": schema.StringAttribute{
 				MarkdownDescription: "Optional public API filter expression. Quote string values, such as test_set_id=\"abc12345\".",
 				Optional:            true,
@@ -106,7 +108,7 @@ func (d *testCasesDataSource) Read(ctx context.Context, req datasource.ReadReque
 		options.OrderBy = config.OrderBy.ValueString()
 	}
 
-	all, err := listAllTestCases(ctx, d.client, options)
+	all, err := listAllTestCases(ctx, clientForWorkspace(d.client, config.WorkspaceID), options)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Coval test cases", err.Error())
 		return

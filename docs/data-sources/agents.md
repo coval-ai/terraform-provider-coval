@@ -29,6 +29,7 @@ data "coval_agents" "production" {
 - `order_by` (String) Public API sort expression, such as -create_time or display_name.
 - `page_size` (Number) Number of agents requested per API page. The data source follows all returned pages.
 - `tag_filters` (Set of String) Tags every returned agent must contain.
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 

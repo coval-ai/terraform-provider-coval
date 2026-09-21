@@ -47,6 +47,7 @@ resource "coval_agent" "support" {
 - `tags` (Set of String) Tags associated with the agent. Set [] to clear them.
 - `test_set_ids` (Set of String) Test-set IDs associated with the agent. Set [] to clear them.
 - `workflows` (Dynamic) Workflow JSON configuration. Set {} to clear it.
+- `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 
@@ -76,6 +77,10 @@ import {
 #### Required
 
 - `id` (String)
+
+#### Optional
+
+- `workspace_id` (String)
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

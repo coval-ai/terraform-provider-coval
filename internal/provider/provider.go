@@ -126,6 +126,7 @@ func configuredValue(value types.String, environmentVariable string, fallback st
 
 func (p *CovalProvider) Resources(context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
+		newWorkspaceResource,
 		newTestSetResource,
 		newTestCaseResource,
 		newPersonaResource,
@@ -136,6 +137,8 @@ func (p *CovalProvider) Resources(context.Context) []func() resource.Resource {
 
 func (p *CovalProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
+		newWorkspaceDataSource,
+		newWorkspacesDataSource,
 		newTestSetDataSource,
 		newTestSetsDataSource,
 		newTestCaseDataSource,

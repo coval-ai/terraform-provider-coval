@@ -61,6 +61,7 @@ resource "coval_persona" "support_customer" {
 - `voice_speed` (Number) Voice-speed multiplier from 0.25 through 2.0.
 - `voice_volume` (Number) Voice gain multiplier from 0.0 (silent) through 2.0 (double volume).
 - `wait_seconds` (Number) Response delay in seconds.
+- `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 
@@ -113,6 +114,10 @@ import {
 #### Required
 
 - `id` (String)
+
+#### Optional
+
+- `workspace_id` (String)
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

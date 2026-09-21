@@ -22,11 +22,12 @@ type agentsDataSource struct {
 }
 
 type agentsDataSourceModel struct {
-	Filter     types.String        `tfsdk:"filter"`
-	PageSize   types.Int64         `tfsdk:"page_size"`
-	OrderBy    types.String        `tfsdk:"order_by"`
-	TagFilters types.Set           `tfsdk:"tag_filters"`
-	Agents     []agentSummaryModel `tfsdk:"agents"`
+	WorkspaceID types.String        `tfsdk:"workspace_id"`
+	Filter      types.String        `tfsdk:"filter"`
+	PageSize    types.Int64         `tfsdk:"page_size"`
+	OrderBy     types.String        `tfsdk:"order_by"`
+	TagFilters  types.Set           `tfsdk:"tag_filters"`
+	Agents      []agentSummaryModel `tfsdk:"agents"`
 }
 
 type agentSummaryModel struct {
@@ -58,6 +59,7 @@ func (d *agentsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves all Coval agents matching public API filters.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"filter": schema.StringAttribute{
 				MarkdownDescription: "Optional public API filter expression. Quote values that contain spaces.",
 				Optional:            true,
@@ -132,17 +134,18 @@ func (d *agentsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if tagFilters != nil {
 		options.TagFilters = *tagFilters
 	}
-	agents, err := listAllAgents(ctx, d.client, options)
+	agents, err := listAllAgents(ctx, clientForWorkspace(d.client, config.WorkspaceID), options)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Coval agents", err.Error())
 		return
 	}
 	state := agentsDataSourceModel{
-		Filter:     config.Filter,
-		PageSize:   config.PageSize,
-		OrderBy:    config.OrderBy,
-		TagFilters: config.TagFilters,
-		Agents:     make([]agentSummaryModel, 0, len(agents)),
+		WorkspaceID: config.WorkspaceID,
+		Filter:      config.Filter,
+		PageSize:    config.PageSize,
+		OrderBy:     config.OrderBy,
+		TagFilters:  config.TagFilters,
+		Agents:      make([]agentSummaryModel, 0, len(agents)),
 	}
 	for _, remote := range agents {
 		metricIDs, metricDiagnostics := types.SetValueFrom(ctx, types.StringType, remote.MetricIDs)

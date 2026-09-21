@@ -26,6 +26,7 @@ data "coval_test_cases" "regression" {
 
 - `filter` (String) Optional public API filter expression. Quote string values, such as test_set_id="abc12345".
 - `order_by` (String) Optional ordering expression, such as -create_time.
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 

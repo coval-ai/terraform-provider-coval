@@ -35,6 +35,7 @@ type testSetResource struct {
 
 type testSetResourceModel struct {
 	ID              types.String  `tfsdk:"id"`
+	WorkspaceID     types.String  `tfsdk:"workspace_id"`
 	Name            types.String  `tfsdk:"name"`
 	Slug            types.String  `tfsdk:"slug"`
 	DisplayName     types.String  `tfsdk:"display_name"`
@@ -49,7 +50,8 @@ type testSetResourceModel struct {
 }
 
 type testSetIdentityModel struct {
-	ID types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 
 func newTestSetResource() resource.Resource {
@@ -69,6 +71,7 @@ func (r *testSetResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"workspace_id": workspaceResourceAttribute(),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Canonical API resource name.",
 				Computed:            true,
@@ -155,7 +158,8 @@ func testSetTagValidators() []validator.Set {
 func (r *testSetResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{RequiredForImport: true},
+			"id":           identityschema.StringAttribute{RequiredForImport: true},
+			"workspace_id": identityschema.StringAttribute{OptionalForImport: true},
 		},
 	}
 }
@@ -185,7 +189,7 @@ func (r *testSetResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 
-	created, err := r.client.CreateTestSet(ctx, input)
+	created, err := clientForWorkspace(r.client, plan.WorkspaceID).CreateTestSet(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Coval test set", err.Error())
 		return
@@ -196,7 +200,7 @@ func (r *testSetResource) Create(ctx context.Context, req resource.CreateRequest
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *testSetResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -206,7 +210,7 @@ func (r *testSetResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 
-	remote, err := r.client.GetTestSet(ctx, state.ID.ValueString())
+	remote, err := clientForWorkspace(r.client, state.WorkspaceID).GetTestSet(ctx, state.ID.ValueString())
 	if client.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -221,7 +225,7 @@ func (r *testSetResource) Read(ctx context.Context, req resource.ReadRequest, re
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &refreshed)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: refreshed.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: refreshed.ID, WorkspaceID: refreshed.WorkspaceID})...)
 }
 
 func (r *testSetResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -236,7 +240,7 @@ func (r *testSetResource) Update(ctx context.Context, req resource.UpdateRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdateTestSet(ctx, plan.ID.ValueString(), input)
+	updated, err := clientForWorkspace(r.client, plan.WorkspaceID).UpdateTestSet(ctx, plan.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Coval test set", err.Error())
 		return
@@ -247,7 +251,7 @@ func (r *testSetResource) Update(ctx context.Context, req resource.UpdateRequest
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testSetIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *testSetResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -256,13 +260,13 @@ func (r *testSetResource) Delete(ctx context.Context, req resource.DeleteRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteTestSet(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+	if err := clientForWorkspace(r.client, state.WorkspaceID).DeleteTestSet(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Coval test set", err.Error())
 	}
 }
 
 func (r *testSetResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	importStateWithWorkspaceIdentity(ctx, req, resp)
 }
 
 func createTestSetInput(ctx context.Context, plan testSetResourceModel) (client.CreateTestSetInput, diag.Diagnostics) {
@@ -318,8 +322,8 @@ func testSetResourceState(ctx context.Context, remote client.TestSet, prior *tes
 	return testSetState(ctx, remote, prior, types.StringValue(""))
 }
 
-func testSetDataSourceState(ctx context.Context, remote client.TestSet) (testSetResourceModel, diag.Diagnostics) {
-	return testSetState(ctx, remote, nil, types.StringNull())
+func testSetDataSourceState(ctx context.Context, remote client.TestSet, config *testSetResourceModel) (testSetResourceModel, diag.Diagnostics) {
+	return testSetState(ctx, remote, config, types.StringNull())
 }
 
 func testSetState(ctx context.Context, remote client.TestSet, prior *testSetResourceModel, descriptionWhenNull types.String) (testSetResourceModel, diag.Diagnostics) {
@@ -348,6 +352,7 @@ func testSetState(ctx context.Context, remote client.TestSet, prior *testSetReso
 
 	state := testSetResourceModel{
 		ID:              types.StringValue(remote.ID),
+		WorkspaceID:     types.StringNull(),
 		Name:            types.StringValue(remote.Name),
 		Slug:            types.StringValue(remote.Slug),
 		DisplayName:     types.StringValue(remote.DisplayName),
@@ -359,6 +364,9 @@ func testSetState(ctx context.Context, remote client.TestSet, prior *testSetReso
 		Tags:            tags,
 		CreateTime:      types.StringValue(remote.CreateTime),
 		UpdateTime:      types.StringNull(),
+	}
+	if prior != nil {
+		state.WorkspaceID = prior.WorkspaceID
 	}
 	if remote.Description != nil {
 		state.Description = types.StringValue(*remote.Description)

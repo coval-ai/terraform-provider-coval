@@ -31,6 +31,7 @@ data "coval_metrics" "production" {
 - `order_by` (String)
 - `page_size` (Number)
 - `tag_filters` (Set of String)
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 

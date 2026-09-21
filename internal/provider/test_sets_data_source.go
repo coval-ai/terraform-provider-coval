@@ -20,10 +20,11 @@ type testSetsDataSource struct {
 }
 
 type testSetsDataSourceModel struct {
-	Filter     types.String          `tfsdk:"filter"`
-	OrderBy    types.String          `tfsdk:"order_by"`
-	TagFilters types.Set             `tfsdk:"tag_filters"`
-	TestSets   []testSetSummaryModel `tfsdk:"test_sets"`
+	WorkspaceID types.String          `tfsdk:"workspace_id"`
+	Filter      types.String          `tfsdk:"filter"`
+	OrderBy     types.String          `tfsdk:"order_by"`
+	TagFilters  types.Set             `tfsdk:"tag_filters"`
+	TestSets    []testSetSummaryModel `tfsdk:"test_sets"`
 }
 
 type testSetSummaryModel struct {
@@ -51,6 +52,7 @@ func (d *testSetsDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists Coval test sets visible to the configured API key.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"filter": schema.StringAttribute{
 				MarkdownDescription: "Optional public API filter expression. Quote string values.",
 				Optional:            true,
@@ -120,7 +122,7 @@ func (d *testSetsDataSource) Read(ctx context.Context, req datasource.ReadReques
 		options.TagFilters = *tags
 	}
 
-	all, err := listAllTestSets(ctx, d.client, options)
+	all, err := listAllTestSets(ctx, clientForWorkspace(d.client, config.WorkspaceID), options)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Coval test sets", err.Error())
 		return

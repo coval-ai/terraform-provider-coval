@@ -34,6 +34,7 @@ type testCaseResource struct {
 
 type testCaseResourceModel struct {
 	ID                 types.String  `tfsdk:"id"`
+	WorkspaceID        types.String  `tfsdk:"workspace_id"`
 	Name               types.String  `tfsdk:"name"`
 	TestSetID          types.String  `tfsdk:"test_set_id"`
 	InputString        types.String  `tfsdk:"input_str"`
@@ -50,7 +51,8 @@ type testCaseResourceModel struct {
 }
 
 type testCaseIdentityModel struct {
-	ID types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 
 func newTestCaseResource() resource.Resource {
@@ -70,6 +72,7 @@ func (r *testCaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"workspace_id": workspaceResourceAttribute(),
 			"name": schema.StringAttribute{
 				MarkdownDescription: "Canonical API resource name.",
 				Computed:            true,
@@ -151,7 +154,8 @@ func (r *testCaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 func (r *testCaseResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
 	resp.IdentitySchema = identityschema.Schema{
 		Attributes: map[string]identityschema.Attribute{
-			"id": identityschema.StringAttribute{RequiredForImport: true},
+			"id":           identityschema.StringAttribute{RequiredForImport: true},
+			"workspace_id": identityschema.StringAttribute{OptionalForImport: true},
 		},
 	}
 }
@@ -266,7 +270,7 @@ func (r *testCaseResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	created, err := r.client.CreateTestCase(ctx, input)
+	created, err := clientForWorkspace(r.client, plan.WorkspaceID).CreateTestCase(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Coval test case", err.Error())
 		return
@@ -277,7 +281,7 @@ func (r *testCaseResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *testCaseResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -287,7 +291,7 @@ func (r *testCaseResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
-	remote, err := r.client.GetTestCase(ctx, state.ID.ValueString())
+	remote, err := clientForWorkspace(r.client, state.WorkspaceID).GetTestCase(ctx, state.ID.ValueString())
 	if client.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -302,7 +306,7 @@ func (r *testCaseResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &refreshed)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: refreshed.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: refreshed.ID, WorkspaceID: refreshed.WorkspaceID})...)
 }
 
 func (r *testCaseResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -317,7 +321,7 @@ func (r *testCaseResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdateTestCase(ctx, plan.ID.ValueString(), input)
+	updated, err := clientForWorkspace(r.client, plan.WorkspaceID).UpdateTestCase(ctx, plan.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Coval test case", err.Error())
 		return
@@ -328,7 +332,7 @@ func (r *testCaseResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, testCaseIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *testCaseResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -337,13 +341,13 @@ func (r *testCaseResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteTestCase(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+	if err := clientForWorkspace(r.client, state.WorkspaceID).DeleteTestCase(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Coval test case", err.Error())
 	}
 }
 
 func (r *testCaseResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	importStateWithWorkspaceIdentity(ctx, req, resp)
 }
 
 func createTestCaseInput(ctx context.Context, plan testCaseResourceModel) (client.CreateTestCaseInput, diag.Diagnostics) {
@@ -472,6 +476,7 @@ func testCaseResourceState(ctx context.Context, remote client.TestCase, prior *t
 
 	state := testCaseResourceModel{
 		ID:                 types.StringValue(remote.ID),
+		WorkspaceID:        types.StringNull(),
 		Name:               types.StringValue(remote.Name),
 		TestSetID:          types.StringNull(),
 		InputString:        types.StringValue(remote.InputString),
@@ -485,6 +490,9 @@ func testCaseResourceState(ctx context.Context, remote client.TestCase, prior *t
 		UserNotes:          types.StringNull(),
 		CreateTime:         types.StringValue(remote.CreateTime),
 		UpdateTime:         types.StringNull(),
+	}
+	if prior != nil {
+		state.WorkspaceID = prior.WorkspaceID
 	}
 	if remote.TestSetID != nil {
 		state.TestSetID = types.StringValue(*remote.TestSetID)
