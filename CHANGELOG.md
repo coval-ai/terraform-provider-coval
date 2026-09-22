@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.4.0...v1.5.0) (2026-09-22)
+
+### Features
+
+* add workspace management ([#11](https://github.com/coval-ai/terraform-provider-coval/issues/11)) ([d1bcf4b](https://github.com/coval-ai/terraform-provider-coval/commit/d1bcf4bca5d99034adf88b2b435ac5691f829cb4))
+
 ## [1.4.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.3.0...v1.4.0) (2026-09-20)
 
 ### Features
