@@ -37,7 +37,6 @@ func (d *workspaceDataSource) Schema(_ context.Context, _ datasource.SchemaReque
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.LengthBetween(1, 26)},
 			},
-			"slug":            schema.StringAttribute{MarkdownDescription: "Workspace slug.", Computed: true},
 			"display_name":    schema.StringAttribute{MarkdownDescription: "Human-readable workspace name.", Computed: true},
 			"status":          schema.StringAttribute{MarkdownDescription: "Workspace lifecycle status.", Computed: true},
 			"workspace_type":  schema.StringAttribute{MarkdownDescription: "Workspace type.", Computed: true},

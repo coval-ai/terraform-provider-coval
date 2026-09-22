@@ -1,5 +1,4 @@
 resource "coval_workspace" "example" {
-  slug         = "example"
   display_name = "Example Workspace"
 }
 

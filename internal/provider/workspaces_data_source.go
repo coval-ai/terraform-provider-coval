@@ -39,7 +39,6 @@ func (d *workspacesDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Computed:            true,
 				NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 					"id":              schema.StringAttribute{Computed: true},
-					"slug":            schema.StringAttribute{Computed: true},
 					"display_name":    schema.StringAttribute{Computed: true},
 					"status":          schema.StringAttribute{Computed: true},
 					"workspace_type":  schema.StringAttribute{Computed: true},

@@ -24,8 +24,8 @@ func init() {
 }
 
 func TestAccWorkspaceResource(t *testing.T) {
-	slug := acctest.RandomWithPrefix(acceptanceWorkspacePrefix)
-	displayName := "Terraform acceptance " + slug
+	testID := acctest.RandomWithPrefix(acceptanceWorkspacePrefix)
+	displayName := "Terraform acceptance " + testID
 	workspaceResourceName := "coval_workspace.test"
 	testSetResourceName := "coval_test_set.scoped"
 
@@ -35,9 +35,8 @@ func TestAccWorkspaceResource(t *testing.T) {
 		CheckDestroy:             testAccCheckWorkspaceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccWorkspaceConfig(slug, displayName),
+				Config: testAccWorkspaceConfig(testID, displayName),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr(workspaceResourceName, "slug", slug),
 					resource.TestCheckResourceAttr(workspaceResourceName, "display_name", displayName),
 					resource.TestCheckResourceAttr(workspaceResourceName, "status", "ACTIVE"),
 					resource.TestCheckResourceAttr(workspaceResourceName, "workspace_type", "CUSTOM"),
@@ -62,7 +61,7 @@ func TestAccWorkspaceResource(t *testing.T) {
 				ImportStateKind: resource.ImportBlockWithResourceIdentity,
 			},
 			{
-				Config: testAccWorkspaceConfig(slug, displayName+" updated"),
+				Config: testAccWorkspaceConfig(testID, displayName+" updated"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr(workspaceResourceName, "display_name", displayName+" updated"),
 					resource.TestCheckResourceAttrPair(testSetResourceName, "workspace_id", workspaceResourceName, "id"),
@@ -72,12 +71,11 @@ func TestAccWorkspaceResource(t *testing.T) {
 	})
 }
 
-func testAccWorkspaceConfig(slug string, displayName string) string {
-	testSetDisplayName := "Scoped test set " + slug
+func testAccWorkspaceConfig(testID string, displayName string) string {
+	testSetDisplayName := "Scoped test set " + testID
 	filter := fmt.Sprintf("display_name=%q", testSetDisplayName)
 	return fmt.Sprintf(`
 resource "coval_workspace" "test" {
-  slug         = %s
   display_name = %s
 }
 
@@ -111,7 +109,7 @@ data "coval_test_sets" "default" {
   filter     = %s
   depends_on = [coval_test_set.scoped]
 }
-`, strconv.Quote(slug), strconv.Quote(displayName), strconv.Quote(testSetDisplayName), strconv.Quote(filter), strconv.Quote(filter))
+`, strconv.Quote(displayName), strconv.Quote(testSetDisplayName), strconv.Quote(filter), strconv.Quote(filter))
 }
 
 func testAccCheckWorkspaceListed(workspaceResourceName string, dataSourceName string) resource.TestCheckFunc {
@@ -164,7 +162,8 @@ func sweepWorkspaces(_ string) error {
 		return err
 	}
 	for _, workspace := range workspaces {
-		if workspace.WorkspaceType != "CUSTOM" || !strings.HasPrefix(workspace.Slug, acceptanceWorkspacePrefix) {
+		if workspace.WorkspaceType != "CUSTOM" ||
+			!strings.HasPrefix(workspace.DisplayName, "Terraform acceptance "+acceptanceWorkspacePrefix) {
 			continue
 		}
 		if err := sweepWorkspaceTestSets(ctx, apiClient.ForWorkspace(workspace.ID)); err != nil {

@@ -3,18 +3,17 @@
 page_title: "coval_workspace Resource - coval"
 subcategory: ""
 description: |-
-  Manages a custom Coval workspace. Deletion is a permanent soft delete: the workspace disappears from reads, but its slug remains reserved.
+  Manages a custom Coval workspace. Deletion permanently removes the workspace from supported reads.
 ---
 
 # coval_workspace (Resource)
 
-Manages a custom Coval workspace. Deletion is a permanent soft delete: the workspace disappears from reads, but its slug remains reserved.
+Manages a custom Coval workspace. Deletion permanently removes the workspace from supported reads.
 
 ## Example Usage
 
 ```terraform
 resource "coval_workspace" "example" {
-  slug         = "example"
   display_name = "Example Workspace"
 }
 
@@ -31,7 +30,6 @@ resource "coval_test_set" "smoke" {
 ### Required
 
 - `display_name` (String) Human-readable workspace name.
-- `slug` (String) Organization-unique workspace slug. Soft-deleted workspaces continue to reserve their slugs.
 
 ### Read-Only
 

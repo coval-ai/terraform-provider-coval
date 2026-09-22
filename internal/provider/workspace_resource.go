@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"fmt"
-	"regexp"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -30,7 +29,6 @@ type workspaceResource struct {
 
 type workspaceResourceModel struct {
 	ID            types.String `tfsdk:"id"`
-	Slug          types.String `tfsdk:"slug"`
 	DisplayName   types.String `tfsdk:"display_name"`
 	Status        types.String `tfsdk:"status"`
 	WorkspaceType types.String `tfsdk:"workspace_type"`
@@ -52,24 +50,12 @@ func (r *workspaceResource) Metadata(_ context.Context, req resource.MetadataReq
 
 func (r *workspaceResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Manages a custom Coval workspace. Deletion is a permanent soft delete: the workspace disappears from reads, but its slug remains reserved.",
+		MarkdownDescription: "Manages a custom Coval workspace. Deletion permanently removes the workspace from supported reads.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Server-assigned workspace ID.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"slug": schema.StringAttribute{
-				MarkdownDescription: "Organization-unique workspace slug. Soft-deleted workspaces continue to reserve their slugs.",
-				Required:            true,
-				PlanModifiers:       []planmodifier.String{stringplanmodifier.RequiresReplace()},
-				Validators: []validator.String{
-					stringvalidator.LengthBetween(1, 100),
-					stringvalidator.RegexMatches(
-						regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`),
-						"must contain lowercase letters and digits separated by single hyphens",
-					),
-				},
 			},
 			"display_name": schema.StringAttribute{
 				MarkdownDescription: "Human-readable workspace name.",
@@ -123,7 +109,6 @@ func (r *workspaceResource) Create(ctx context.Context, req resource.CreateReque
 		return
 	}
 	remote, err := r.client.CreateWorkspace(ctx, client.CreateWorkspaceInput{
-		Slug:        plan.Slug.ValueString(),
 		DisplayName: plan.DisplayName.ValueString(),
 	})
 	if err != nil {
@@ -198,7 +183,6 @@ func (r *workspaceResource) ImportState(ctx context.Context, req resource.Import
 func workspaceState(remote client.Workspace) workspaceResourceModel {
 	return workspaceResourceModel{
 		ID:            types.StringValue(remote.ID),
-		Slug:          types.StringValue(remote.Slug),
 		DisplayName:   types.StringValue(remote.DisplayName),
 		Status:        types.StringValue(remote.Status),
 		WorkspaceType: types.StringValue(remote.WorkspaceType),

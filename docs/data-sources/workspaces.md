@@ -32,6 +32,5 @@ Read-Only:
 - `display_name` (String)
 - `id` (String)
 - `last_updated_at` (String)
-- `slug` (String)
 - `status` (String)
 - `workspace_type` (String)

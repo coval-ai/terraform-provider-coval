@@ -25,12 +25,15 @@ func TestWorkspaceLifecycleRequests(t *testing.T) {
 			if err != nil {
 				t.Fatalf("read create body: %v", err)
 			}
-			var input CreateWorkspaceInput
+			var input map[string]any
 			if err := json.Unmarshal(body, &input); err != nil {
 				t.Fatalf("decode create body: %v", err)
 			}
-			if input.Slug != "example" || input.DisplayName != "Example Workspace" {
+			if input["display_name"] != "Example Workspace" {
 				t.Errorf("create input = %#v", input)
+			}
+			if _, exists := input["slug"]; exists {
+				t.Errorf("create input includes deprecated slug: %#v", input)
 			}
 			return testResponse(http.StatusCreated, workspaceResponse("Example Workspace"), nil), nil
 		case 2:
@@ -63,8 +66,8 @@ func TestWorkspaceLifecycleRequests(t *testing.T) {
 		t.Fatalf("New(): %v", err)
 	}
 
-	created, err := apiClient.CreateWorkspace(context.Background(), CreateWorkspaceInput{Slug: "example", DisplayName: "Example Workspace"})
-	if err != nil || created.Slug != "example" {
+	created, err := apiClient.CreateWorkspace(context.Background(), CreateWorkspaceInput{DisplayName: "Example Workspace"})
+	if err != nil || created.DisplayName != "Example Workspace" {
 		t.Fatalf("CreateWorkspace() = %#v, %v", created, err)
 	}
 	if _, err := apiClient.GetWorkspace(context.Background(), created.ID); err != nil {

@@ -30,6 +30,5 @@ data "coval_workspace" "example" {
 - `created_at` (String) RFC 3339 creation timestamp.
 - `display_name` (String) Human-readable workspace name.
 - `last_updated_at` (String) RFC 3339 timestamp of the latest update.
-- `slug` (String) Workspace slug.
 - `status` (String) Workspace lifecycle status.
 - `workspace_type` (String) Workspace type.

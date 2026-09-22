@@ -2,14 +2,12 @@ package provider
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -22,23 +20,8 @@ func TestWorkspaceResourceSchemaMatchesPublicContract(t *testing.T) {
 		t.Fatalf("Schema() diagnostics: %v", response.Diagnostics)
 	}
 
-	slug, ok := response.Schema.Attributes["slug"].(schema.StringAttribute)
-	if !ok {
-		t.Fatalf("slug has type %T, want schema.StringAttribute", response.Schema.Attributes["slug"])
-	}
-	if !slug.Required {
-		t.Error("slug must be required")
-	}
-	if got, want := reflect.TypeOf(slug.PlanModifiers[0]), reflect.TypeOf(stringplanmodifier.RequiresReplace()); got != want {
-		t.Errorf("slug plan modifier has type %v, want %v", got, want)
-	}
-	if diagnostics := validateString(t.Context(), slug.Validators, "example-staging"); diagnostics.HasError() {
-		t.Errorf("valid slug was rejected: %v", diagnostics)
-	}
-	for _, value := range []string{"Example", "example--staging", "example_"} {
-		if diagnostics := validateString(t.Context(), slug.Validators, value); !diagnostics.HasError() {
-			t.Errorf("invalid slug %q was accepted", value)
-		}
+	if _, ok := response.Schema.Attributes["slug"]; ok {
+		t.Error("workspace resource must not expose the deprecated public API slug")
 	}
 
 	displayName, ok := response.Schema.Attributes["display_name"].(schema.StringAttribute)
@@ -73,7 +56,6 @@ func TestWorkspaceStateMapsPublicAPIResponse(t *testing.T) {
 
 	remote := client.Workspace{
 		ID:            "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-		Slug:          "example",
 		DisplayName:   "Example Workspace",
 		Status:        "ACTIVE",
 		WorkspaceType: "CUSTOM",
@@ -84,9 +66,6 @@ func TestWorkspaceStateMapsPublicAPIResponse(t *testing.T) {
 
 	if got, want := state.ID, types.StringValue(remote.ID); !got.Equal(want) {
 		t.Errorf("id = %s, want %s", got, want)
-	}
-	if got, want := state.Slug, types.StringValue(remote.Slug); !got.Equal(want) {
-		t.Errorf("slug = %s, want %s", got, want)
 	}
 	if got, want := state.DisplayName, types.StringValue(remote.DisplayName); !got.Equal(want) {
 		t.Errorf("display_name = %s, want %s", got, want)

@@ -9,7 +9,6 @@ import (
 // Workspace is a Coval organization workspace.
 type Workspace struct {
 	ID            string `json:"id"`
-	Slug          string `json:"slug"`
 	DisplayName   string `json:"display_name"`
 	Status        string `json:"status"`
 	WorkspaceType string `json:"workspace_type"`
@@ -19,7 +18,6 @@ type Workspace struct {
 
 // CreateWorkspaceInput contains writable workspace fields.
 type CreateWorkspaceInput struct {
-	Slug        string `json:"slug"`
 	DisplayName string `json:"display_name"`
 }
 
