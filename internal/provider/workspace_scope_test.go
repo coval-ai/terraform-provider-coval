@@ -25,6 +25,7 @@ func TestWorkspaceScopeIsAvailableAcrossManagedResources(t *testing.T) {
 		{name: "persona", factory: newPersonaResource},
 		{name: "test_case", factory: newTestCaseResource},
 		{name: "test_set", factory: newTestSetResource},
+		{name: "run_template", factory: newRunTemplateResource},
 	}
 
 	for _, test := range resources {
@@ -71,6 +72,8 @@ func TestWorkspaceScopeIsAvailableAcrossResourceDataSources(t *testing.T) {
 		{name: "test_cases", factory: newTestCasesDataSource},
 		{name: "test_set", factory: newTestSetDataSource},
 		{name: "test_sets", factory: newTestSetsDataSource},
+		{name: "run_template", factory: newRunTemplateDataSource},
+		{name: "run_templates", factory: newRunTemplatesDataSource},
 	}
 
 	for _, test := range dataSources {
