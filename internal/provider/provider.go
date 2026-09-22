@@ -132,6 +132,7 @@ func (p *CovalProvider) Resources(context.Context) []func() resource.Resource {
 		newPersonaResource,
 		newAgentResource,
 		newMetricResource,
+		newScheduledRunResource,
 	}
 }
 
@@ -149,6 +150,8 @@ func (p *CovalProvider) DataSources(context.Context) []func() datasource.DataSou
 		newAgentsDataSource,
 		newMetricDataSource,
 		newMetricsDataSource,
+		newScheduledRunDataSource,
+		newScheduledRunsDataSource,
 	}
 }
 

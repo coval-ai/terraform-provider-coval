@@ -94,3 +94,32 @@ func TestListAllPersonasPaginates(t *testing.T) {
 		t.Fatalf("requests = %d, results = %#v", requestCount, results)
 	}
 }
+
+func TestListAllScheduledRunsPaginates(t *testing.T) {
+	t.Parallel()
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		response.Header().Set("Content-Type", "application/json")
+		switch request.URL.Query().Get("page_token") {
+		case "":
+			_, _ = fmt.Fprint(response, `{"scheduled_runs":[{"id":"xyz789uvw456rst123abcd"}],"next_page_token":"page-2"}`)
+		case "page-2":
+			_, _ = fmt.Fprint(response, `{"scheduled_runs":[{"id":"abc123def456ghi789jklm"}],"next_page_token":null}`)
+		default:
+			t.Fatalf("unexpected token")
+		}
+	}))
+	defer server.Close()
+	apiClient, err := client.New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	results, err := listAllScheduledRuns(t.Context(), apiClient, client.ListScheduledRunsOptions{PageSize: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requests != 2 || len(results) != 2 {
+		t.Fatalf("requests = %d, results = %#v", requests, results)
+	}
+}
