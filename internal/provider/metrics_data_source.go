@@ -20,6 +20,7 @@ var (
 
 type metricsDataSource struct{ client *client.Client }
 type metricsDataSourceModel struct {
+	WorkspaceID    types.String         `tfsdk:"workspace_id"`
 	Filter         types.String         `tfsdk:"filter"`
 	PageSize       types.Int64          `tfsdk:"page_size"`
 	OrderBy        types.String         `tfsdk:"order_by"`
@@ -80,7 +81,8 @@ func (d *metricsDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 	cF := func() schema.Float64Attribute { return schema.Float64Attribute{Computed: true} }
 	cSet := func() schema.SetAttribute { return schema.SetAttribute{ElementType: types.StringType, Computed: true} }
 	resp.Schema = schema.Schema{MarkdownDescription: "Retrieves all Coval metrics matching public API filters.", Attributes: map[string]schema.Attribute{
-		"filter": schema.StringAttribute{Optional: true}, "page_size": schema.Int64Attribute{Optional: true, Validators: []validator.Int64{int64validator.Between(1, 100)}}, "order_by": schema.StringAttribute{Optional: true},
+		"workspace_id": workspaceDataSourceAttribute(),
+		"filter":       schema.StringAttribute{Optional: true}, "page_size": schema.Int64Attribute{Optional: true, Validators: []validator.Int64{int64validator.Between(1, 100)}}, "order_by": schema.StringAttribute{Optional: true},
 		"include_builtin": schema.BoolAttribute{MarkdownDescription: "Include Coval built-in metrics.", Optional: true}, "tag_filters": schema.SetAttribute{ElementType: types.StringType, Optional: true, Validators: []validator.Set{setvalidator.SizeAtMost(20)}},
 		"metrics": schema.ListNestedAttribute{MarkdownDescription: "All matching metric summaries. Use the singular coval_metric data source for polymorphic and nested configuration.", Computed: true, NestedObject: schema.NestedAttributeObject{Attributes: map[string]schema.Attribute{
 			"name": cS(), "id": cS(), "metric_name": cS(), "description": cS(), "metric_type": cS(), "prompt": cS(), "enabled_tools": cSet(), "categories": cSet(), "min_value": cF(), "max_value": cF(),
@@ -118,7 +120,7 @@ func (d *metricsDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if tags != nil {
 		options.TagFilters = *tags
 	}
-	all, err := listAllMetrics(ctx, d.client, options)
+	all, err := listAllMetrics(ctx, clientForWorkspace(d.client, config.WorkspaceID), options)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Coval metrics", err.Error())
 		return

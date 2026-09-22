@@ -25,6 +25,10 @@ data "coval_persona" "support_customer" {
 
 - `id` (String) Server-assigned persona ID.
 
+### Optional
+
+- `workspace_id` (String) Workspace ID that scopes this lookup. Omit it to use the organization's active default workspace.
+
 ### Read-Only
 
 - `audio_degradation` (Attributes) Channel degradation preset applied to the persona. (see [below for nested schema](#nestedatt--audio_degradation))

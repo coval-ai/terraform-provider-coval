@@ -33,6 +33,7 @@ func (d *personaDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 		MarkdownDescription: "Server-assigned persona ID.",
 		Required:            true,
 	}
+	attributes["workspace_id"] = workspaceDataSourceAttribute()
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Reads a Coval simulated persona by ID.",
 		Attributes:          attributes,
@@ -58,12 +59,13 @@ func (d *personaDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	remote, err := d.client.GetPersona(ctx, config.ID.ValueString())
+	remote, err := clientForWorkspace(d.client, config.WorkspaceID).GetPersona(ctx, config.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval persona", err.Error())
 		return
 	}
 	state, diagnostics := personaState(ctx, remote)
+	state.WorkspaceID = config.WorkspaceID
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

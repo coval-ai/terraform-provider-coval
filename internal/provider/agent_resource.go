@@ -55,6 +55,7 @@ type agentResource struct {
 
 type agentResourceModel struct {
 	ID               types.String  `tfsdk:"id"`
+	WorkspaceID      types.String  `tfsdk:"workspace_id"`
 	CustomerAgentID  types.String  `tfsdk:"customer_agent_id"`
 	DisplayName      types.String  `tfsdk:"display_name"`
 	ModelType        types.String  `tfsdk:"model_type"`
@@ -74,7 +75,8 @@ type agentResourceModel struct {
 }
 
 type agentIdentityModel struct {
-	ID types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 
 func newAgentResource() resource.Resource {
@@ -94,6 +96,7 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
+			"workspace_id": workspaceResourceAttribute(),
 			"customer_agent_id": schema.StringAttribute{
 				MarkdownDescription: "Customer-defined external identifier. Coval defaults it to id when omitted.",
 				Optional:            true,
@@ -205,7 +208,8 @@ func agentTagValidators() []validator.Set {
 
 func (r *agentResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
 	resp.IdentitySchema = identityschema.Schema{Attributes: map[string]identityschema.Attribute{
-		"id": identityschema.StringAttribute{RequiredForImport: true},
+		"id":           identityschema.StringAttribute{RequiredForImport: true},
+		"workspace_id": identityschema.StringAttribute{OptionalForImport: true},
 	}}
 }
 
@@ -232,7 +236,7 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	created, err := r.client.CreateAgent(ctx, input)
+	created, err := clientForWorkspace(r.client, plan.WorkspaceID).CreateAgent(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Coval agent", err.Error())
 		return
@@ -248,7 +252,7 @@ func (r *agentResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -257,7 +261,7 @@ func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := r.client.GetAgent(ctx, state.ID.ValueString())
+	remote, err := clientForWorkspace(r.client, state.WorkspaceID).GetAgent(ctx, state.ID.ValueString())
 	if client.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -286,7 +290,7 @@ func (r *agentResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &refreshed)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: refreshed.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: refreshed.ID, WorkspaceID: refreshed.WorkspaceID})...)
 }
 
 func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -300,7 +304,7 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdateAgent(ctx, plan.ID.ValueString(), input)
+	updated, err := clientForWorkspace(r.client, plan.WorkspaceID).UpdateAgent(ctx, plan.ID.ValueString(), input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to update Coval agent", err.Error())
 		return
@@ -316,7 +320,7 @@ func (r *agentResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, agentIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -325,13 +329,13 @@ func (r *agentResource) Delete(ctx context.Context, req resource.DeleteRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteAgent(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+	if err := clientForWorkspace(r.client, state.WorkspaceID).DeleteAgent(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Coval agent", err.Error())
 	}
 }
 
 func (r *agentResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	importStateWithWorkspaceIdentity(ctx, req, resp)
 }
 
 func createAgentInput(ctx context.Context, plan agentResourceModel) (client.CreateAgentInput, diag.Diagnostics) {
@@ -419,10 +423,6 @@ func agentResourceStateAfterMutation(ctx context.Context, remote client.Agent, p
 	return agentState(ctx, remote, plan, true)
 }
 
-func agentDataSourceState(ctx context.Context, remote client.Agent) (agentResourceModel, diag.Diagnostics) {
-	return agentState(ctx, remote, nil, false)
-}
-
 func agentState(ctx context.Context, remote client.Agent, prior *agentResourceModel, afterMutation bool) (agentResourceModel, diag.Diagnostics) {
 	var diagnostics diag.Diagnostics
 	attributes, err := nullableAgentObject(remote.Attributes, priorValue(prior, func(model *agentResourceModel) types.Dynamic { return model.Attributes }))
@@ -453,6 +453,7 @@ func agentState(ctx context.Context, remote client.Agent, prior *agentResourceMo
 
 	state := agentResourceModel{
 		ID:               types.StringValue(remote.ID),
+		WorkspaceID:      types.StringNull(),
 		CustomerAgentID:  types.StringValue(remote.CustomerAgentID),
 		DisplayName:      types.StringValue(remote.DisplayName),
 		ModelType:        types.StringValue(remote.ModelType),
@@ -469,6 +470,9 @@ func agentState(ctx context.Context, remote client.Agent, prior *agentResourceMo
 		Tags:             tags,
 		CreateTime:       types.StringValue(remote.CreateTime),
 		UpdateTime:       nullableString(remote.UpdateTime),
+	}
+	if prior != nil {
+		state.WorkspaceID = prior.WorkspaceID
 	}
 	return state, diagnostics
 }

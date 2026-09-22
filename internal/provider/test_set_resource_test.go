@@ -174,7 +174,7 @@ func TestTestSetStateMapsNullDescriptionByConsumer(t *testing.T) {
 		t.Errorf("resource description = %s, want %s", got, want)
 	}
 
-	dataSourceState, dataSourceDiagnostics := testSetDataSourceState(t.Context(), remote)
+	dataSourceState, dataSourceDiagnostics := testSetDataSourceState(t.Context(), remote, nil)
 	if dataSourceDiagnostics.HasError() {
 		t.Fatalf("testSetDataSourceState(): %v", dataSourceDiagnostics)
 	}

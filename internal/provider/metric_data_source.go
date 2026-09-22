@@ -35,7 +35,8 @@ func (d *metricDataSource) Schema(_ context.Context, _ datasource.SchemaRequest,
 	}
 	resp.Schema = schema.Schema{MarkdownDescription: "Retrieves a Coval metric by ID.", Attributes: map[string]schema.Attribute{
 		"name": computedString("Canonical API resource name."), "id": schema.StringAttribute{MarkdownDescription: "Metric ID.", Required: true},
-		"metric_name": computedString("Human-readable metric name."), "description": computedString("Metric description."), "metric_type": computedString("Metric evaluation type."),
+		"workspace_id": workspaceDataSourceAttribute(),
+		"metric_name":  computedString("Human-readable metric name."), "description": computedString("Metric description."), "metric_type": computedString("Metric evaluation type."),
 		"evaluation": metricEvaluationDataSourceSchema(), "prompt": computedString("LLM evaluation prompt."), "enabled_tools": computedSet("Enabled Agent Judge evidence tools."),
 		"categories": computedSet("Classification categories."), "min_value": computedFloat("Minimum score."), "max_value": computedFloat("Maximum score."),
 		"metadata_field_type": computedString("Metadata field type."), "metadata_field_key": computedString("Metadata field key."), "regex_pattern": computedString("Transcript regex pattern."),
@@ -87,12 +88,12 @@ func (d *metricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := d.client.GetMetric(ctx, config.ID.ValueString())
+	remote, err := clientForWorkspace(d.client, config.WorkspaceID).GetMetric(ctx, config.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval metric", err.Error())
 		return
 	}
-	state, diagnostics := metricDataSourceState(ctx, remote)
+	state, diagnostics := metricState(ctx, remote, &config)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

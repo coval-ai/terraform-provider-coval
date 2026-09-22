@@ -47,6 +47,7 @@ resource "coval_test_set" "support" {
 - `tags` (Set of String) Tags associated with the test set. Set [] to clear them.
 - `test_set_metadata` (Dynamic) Arbitrary JSON object containing additional test-set configuration. Set {} to clear it.
 - `test_set_type` (String) Test-set type, such as DEFAULT, SCENARIO, TRANSCRIPT, or WORKFLOW.
+- `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 
@@ -77,6 +78,10 @@ import {
 #### Required
 
 - `id` (String)
+
+#### Optional
+
+- `workspace_id` (String)
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

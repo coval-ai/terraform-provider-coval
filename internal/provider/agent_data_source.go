@@ -31,6 +31,7 @@ func (d *agentDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, 
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Coval agent by ID.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id":       workspaceDataSourceAttribute(),
 			"id":                 schema.StringAttribute{MarkdownDescription: "Agent ID.", Required: true},
 			"customer_agent_id":  schema.StringAttribute{MarkdownDescription: "Customer-defined external identifier.", Computed: true},
 			"display_name":       schema.StringAttribute{MarkdownDescription: "Human-readable agent name.", Computed: true},
@@ -70,12 +71,12 @@ func (d *agentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := d.client.GetAgent(ctx, config.ID.ValueString())
+	remote, err := clientForWorkspace(d.client, config.WorkspaceID).GetAgent(ctx, config.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval agent", err.Error())
 		return
 	}
-	state, diagnostics := agentDataSourceState(ctx, remote)
+	state, diagnostics := agentState(ctx, remote, &config, false)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

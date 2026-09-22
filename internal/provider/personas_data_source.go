@@ -20,10 +20,11 @@ type personasDataSource struct {
 }
 
 type personasDataSourceModel struct {
-	Filter     types.String          `tfsdk:"filter"`
-	OrderBy    types.String          `tfsdk:"order_by"`
-	TagFilters types.Set             `tfsdk:"tag_filters"`
-	Personas   []personaSummaryModel `tfsdk:"personas"`
+	WorkspaceID types.String          `tfsdk:"workspace_id"`
+	Filter      types.String          `tfsdk:"filter"`
+	OrderBy     types.String          `tfsdk:"order_by"`
+	TagFilters  types.Set             `tfsdk:"tag_filters"`
+	Personas    []personaSummaryModel `tfsdk:"personas"`
 }
 
 type personaSummaryModel struct {
@@ -66,6 +67,7 @@ func (d *personasDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Lists Coval simulated personas visible to the configured API key.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"filter": schema.StringAttribute{
 				MarkdownDescription: "Optional public API filter expression. Quote string values containing spaces.",
 				Optional:            true,
@@ -126,7 +128,7 @@ func (d *personasDataSource) Read(ctx context.Context, req datasource.ReadReques
 		options.TagFilters = *tags
 	}
 
-	all, err := listAllPersonas(ctx, d.client, options)
+	all, err := listAllPersonas(ctx, clientForWorkspace(d.client, config.WorkspaceID), options)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to list Coval personas", err.Error())
 		return

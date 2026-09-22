@@ -75,6 +75,7 @@ resource "coval_metric" "resolution" {
 - `target_condition` (Attributes) Rule that determines which metric output counts as a success. (see [below for nested schema](#nestedatt--target_condition))
 - `threshold` (Number) Integer threshold used by threshold-based metrics.
 - `unit` (String) Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.
+- `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
 
@@ -150,6 +151,10 @@ import {
 #### Required
 
 - `id` (String)
+
+#### Optional
+
+- `workspace_id` (String)
 
 The [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import) can be used, for example:
 

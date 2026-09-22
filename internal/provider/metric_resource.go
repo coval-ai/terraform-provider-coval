@@ -79,6 +79,7 @@ type metricResource struct {
 type metricResourceModel struct {
 	Name                                types.String  `tfsdk:"name"`
 	ID                                  types.String  `tfsdk:"id"`
+	WorkspaceID                         types.String  `tfsdk:"workspace_id"`
 	MetricName                          types.String  `tfsdk:"metric_name"`
 	Description                         types.String  `tfsdk:"description"`
 	MetricType                          types.String  `tfsdk:"metric_type"`
@@ -126,7 +127,8 @@ type metricResourceModel struct {
 }
 
 type metricIdentityModel struct {
-	ID types.String `tfsdk:"id"`
+	ID          types.String `tfsdk:"id"`
+	WorkspaceID types.String `tfsdk:"workspace_id"`
 }
 
 func newMetricResource() resource.Resource { return &metricResource{} }
@@ -151,6 +153,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 		Attributes: map[string]schema.Attribute{
 			"name":                         schema.StringAttribute{MarkdownDescription: "Canonical API resource name.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"id":                           schema.StringAttribute{MarkdownDescription: "Server-assigned metric ID.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
+			"workspace_id":                 workspaceResourceAttribute(),
 			"metric_name":                  schema.StringAttribute{MarkdownDescription: "Human-readable metric name.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 200)}},
 			"description":                  schema.StringAttribute{MarkdownDescription: "Metric description.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 1000)}},
 			"metric_type":                  schema.StringAttribute{MarkdownDescription: "Metric evaluation type.", Required: true, Validators: []validator.String{stringvalidator.OneOf(metricTypes...)}},
@@ -239,7 +242,10 @@ func currentMetricVersionSchema() schema.SingleNestedAttribute {
 }
 
 func (r *metricResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
-	resp.IdentitySchema = identityschema.Schema{Attributes: map[string]identityschema.Attribute{"id": identityschema.StringAttribute{RequiredForImport: true}}}
+	resp.IdentitySchema = identityschema.Schema{Attributes: map[string]identityschema.Attribute{
+		"id":           identityschema.StringAttribute{RequiredForImport: true},
+		"workspace_id": identityschema.StringAttribute{OptionalForImport: true},
+	}}
 }
 
 func (r *metricResource) Configure(_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
@@ -265,7 +271,7 @@ func (r *metricResource) Create(ctx context.Context, req resource.CreateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	created, err := r.client.CreateMetric(ctx, input)
+	created, err := clientForWorkspace(r.client, plan.WorkspaceID).CreateMetric(ctx, input)
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to create Coval metric", err.Error())
 		return
@@ -276,7 +282,7 @@ func (r *metricResource) Create(ctx context.Context, req resource.CreateRequest,
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *metricResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -285,7 +291,7 @@ func (r *metricResource) Read(ctx context.Context, req resource.ReadRequest, res
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := r.client.GetMetric(ctx, state.ID.ValueString())
+	remote, err := clientForWorkspace(r.client, state.WorkspaceID).GetMetric(ctx, state.ID.ValueString())
 	if client.IsNotFound(err) {
 		resp.State.RemoveResource(ctx)
 		return
@@ -300,7 +306,7 @@ func (r *metricResource) Read(ctx context.Context, req resource.ReadRequest, res
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &refreshed)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: refreshed.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: refreshed.ID, WorkspaceID: refreshed.WorkspaceID})...)
 }
 
 func (r *metricResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -316,7 +322,7 @@ func (r *metricResource) Update(ctx context.Context, req resource.UpdateRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	updated, err := r.client.UpdateMetric(ctx, plan.ID.ValueString(), client.UpdateMetricInput{
+	updated, err := clientForWorkspace(r.client, plan.WorkspaceID).UpdateMetric(ctx, plan.ID.ValueString(), client.UpdateMetricInput{
 		CreateMetricInput:  input,
 		ClearRuntimeConfig: runtimeConfigIsExplicitlyEmpty(config.RuntimeConfig),
 	})
@@ -330,7 +336,7 @@ func (r *metricResource) Update(ctx context.Context, req resource.UpdateRequest,
 		return
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: state.ID})...)
+	resp.Diagnostics.Append(resp.Identity.Set(ctx, metricIdentityModel{ID: state.ID, WorkspaceID: state.WorkspaceID})...)
 }
 
 func (r *metricResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -339,13 +345,13 @@ func (r *metricResource) Delete(ctx context.Context, req resource.DeleteRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if err := r.client.DeleteMetric(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
+	if err := clientForWorkspace(r.client, state.WorkspaceID).DeleteMetric(ctx, state.ID.ValueString()); err != nil && !client.IsNotFound(err) {
 		resp.Diagnostics.AddError("Unable to delete Coval metric", err.Error())
 	}
 }
 
 func (r *metricResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	resource.ImportStatePassthroughWithIdentity(ctx, path.Root("id"), path.Root("id"), req, resp)
+	importStateWithWorkspaceIdentity(ctx, req, resp)
 }
 
 func metricInput(ctx context.Context, plan metricResourceModel) (client.CreateMetricInput, diag.Diagnostics) {
@@ -484,9 +490,6 @@ func targetConditionFromObject(ctx context.Context, value types.Object) (*client
 func metricResourceState(ctx context.Context, remote client.Metric, prior *metricResourceModel) (metricResourceModel, diag.Diagnostics) {
 	return metricState(ctx, remote, prior)
 }
-func metricDataSourceState(ctx context.Context, remote client.Metric) (metricResourceModel, diag.Diagnostics) {
-	return metricState(ctx, remote, nil)
-}
 
 func metricState(ctx context.Context, remote client.Metric, prior *metricResourceModel) (metricResourceModel, diag.Diagnostics) {
 	var diagnostics diag.Diagnostics
@@ -512,7 +515,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		}
 	}
 	state := metricResourceModel{
-		Name: types.StringValue(remote.Name), ID: types.StringValue(remote.ID), MetricName: types.StringValue(remote.MetricName),
+		Name: types.StringValue(remote.Name), ID: types.StringValue(remote.ID), WorkspaceID: types.StringNull(), MetricName: types.StringValue(remote.MetricName),
 		Description: types.StringValue(remote.Description), MetricType: types.StringValue(remote.MetricType), Evaluation: metricEvaluationValue(remote.Evaluation),
 		Prompt: nullableString(remote.Prompt), EnabledTools: set(remote.EnabledTools), Categories: set(remote.Categories),
 		MinValue: nullableFloat(remote.MinValue), MaxValue: nullableFloat(remote.MaxValue), MetadataFieldType: nullableString(remote.MetadataFieldType),
@@ -529,6 +532,9 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		IncludeTraces: nullableBool(remote.IncludeTraces), RuntimeConfig: runtimeConfigValue(remote.RuntimeConfig), TargetCondition: targetConditionValue(ctx, remote.TargetCondition, &diagnostics),
 		Tags: tags, CreatedBy: nullableString(remote.CreatedBy), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: nullableString(remote.UpdateTime),
 		CurrentVersion: currentMetricVersionValue(remote.CurrentVersion),
+	}
+	if prior != nil {
+		state.WorkspaceID = prior.WorkspaceID
 	}
 	return state, diagnostics
 }

@@ -33,6 +33,7 @@ func (d *testCaseDataSource) Schema(_ context.Context, _ datasource.SchemaReques
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Retrieves a Coval test case by ID.",
 		Attributes: map[string]schema.Attribute{
+			"workspace_id": workspaceDataSourceAttribute(),
 			"id": schema.StringAttribute{
 				MarkdownDescription: "Test-case ID.",
 				Required:            true,
@@ -113,12 +114,12 @@ func (d *testCaseDataSource) Read(ctx context.Context, req datasource.ReadReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	remote, err := d.client.GetTestCase(ctx, config.ID.ValueString())
+	remote, err := clientForWorkspace(d.client, config.WorkspaceID).GetTestCase(ctx, config.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError("Unable to read Coval test case", err.Error())
 		return
 	}
-	state, diagnostics := testCaseResourceState(ctx, remote, nil)
+	state, diagnostics := testCaseResourceState(ctx, remote, &config)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return

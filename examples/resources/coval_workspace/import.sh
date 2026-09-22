@@ -1,0 +1,1 @@
+terraform import coval_workspace.example 01ARZ3NDEKTSV4RRFFQ69G5FAV
