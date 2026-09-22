@@ -384,7 +384,7 @@ func runTemplateState(ctx context.Context, remote client.RunTemplate, prior *run
 	tags, tagDiagnostics := types.SetValueFrom(ctx, types.StringType, remote.Tags)
 	diagnostics.Append(tagDiagnostics...)
 
-	metadata := types.DynamicNull()
+	var metadata types.Dynamic
 	var err error
 	if prior == nil {
 		metadata, err = dynamicFromJSONObject(remote.Metadata)
