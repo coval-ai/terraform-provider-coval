@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.6.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.5.1...v1.6.0) (2026-09-22)
+
+### Features
+
+* manage run templates ([#13](https://github.com/coval-ai/terraform-provider-coval/issues/13)) ([ca15b67](https://github.com/coval-ai/terraform-provider-coval/commit/ca15b6725016b34424e485736975d4fd7bb5f8e2))
+
 ## [1.5.1](https://github.com/coval-ai/terraform-provider-coval/compare/v1.5.0...v1.5.1) (2026-09-22)
 
 ### Bug Fixes
