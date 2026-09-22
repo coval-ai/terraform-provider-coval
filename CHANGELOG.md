@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.7.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.6.0...v1.7.0) (2026-09-22)
+
+### Features
+
+* manage alerts ([#14](https://github.com/coval-ai/terraform-provider-coval/issues/14)) ([e4ea5b2](https://github.com/coval-ai/terraform-provider-coval/commit/e4ea5b2b4a93cc2d251660808e1ac9befb187e1e))
+
 ## [1.6.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.5.1...v1.6.0) (2026-09-22)
 
 ### Features
