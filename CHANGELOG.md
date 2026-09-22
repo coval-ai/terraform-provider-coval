@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.1](https://github.com/coval-ai/terraform-provider-coval/compare/v1.5.0...v1.5.1) (2026-09-22)
+
+### Bug Fixes
+
+* prevent updates for unchanged resources ([#12](https://github.com/coval-ai/terraform-provider-coval/issues/12)) ([2d6c26e](https://github.com/coval-ai/terraform-provider-coval/commit/2d6c26eb2e59e102ab343119d8218794380bf5a5))
+
 ## [1.5.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.4.0...v1.5.0) (2026-09-22)
 
 ### Features
