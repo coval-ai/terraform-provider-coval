@@ -28,6 +28,7 @@ var (
 	_ resource.ResourceWithConfigure   = &agentResource{}
 	_ resource.ResourceWithImportState = &agentResource{}
 	_ resource.ResourceWithIdentity    = &agentResource{}
+	_ resource.ResourceWithModifyPlan  = &agentResource{}
 )
 
 // Private state records only fields the API added to the submitted metadata.
@@ -204,6 +205,10 @@ func agentTagValidators() []validator.Set {
 			stringvalidator.RegexMatches(regexp.MustCompile(`\S`), "must contain at least one non-whitespace character"),
 		),
 	}
+}
+
+func (r *agentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func (r *agentResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
