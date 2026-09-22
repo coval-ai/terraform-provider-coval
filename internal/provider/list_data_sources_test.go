@@ -94,3 +94,34 @@ func TestListAllPersonasPaginates(t *testing.T) {
 		t.Fatalf("requests = %d, results = %#v", requestCount, results)
 	}
 }
+
+func TestListAllRunTemplatesPaginates(t *testing.T) {
+	t.Parallel()
+
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requestCount++
+		response.Header().Set("Content-Type", "application/json")
+		switch request.URL.Query().Get("page_token") {
+		case "":
+			_, _ = fmt.Fprint(response, `{"run_templates":[{"id":"abc123def456ghi789jklm"}],"next_page_token":"page-2"}`)
+		case "page-2":
+			_, _ = fmt.Fprint(response, `{"run_templates":[{"id":"def456ghi789jklmabc123"}],"next_page_token":""}`)
+		default:
+			t.Errorf("unexpected page token %q", request.URL.Query().Get("page_token"))
+		}
+	}))
+	defer server.Close()
+
+	apiClient, err := client.New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatalf("client.New(): %v", err)
+	}
+	results, err := listAllRunTemplates(t.Context(), apiClient, client.ListRunTemplatesOptions{PageSize: 100})
+	if err != nil {
+		t.Fatalf("listAllRunTemplates(): %v", err)
+	}
+	if requestCount != 2 || len(results) != 2 || results[1].ID != "def456ghi789jklmabc123" {
+		t.Fatalf("requests = %d, results = %#v", requestCount, results)
+	}
+}

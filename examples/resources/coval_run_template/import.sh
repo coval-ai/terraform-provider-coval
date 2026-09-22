@@ -1,0 +1,1 @@
+terraform import coval_run_template.regression abc123def456ghi789jklm
