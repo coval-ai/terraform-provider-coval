@@ -125,8 +125,8 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 
 	provider := &CovalProvider{}
 	resources := provider.Resources(context.Background())
-	if len(resources) != 6 {
-		t.Fatalf("Resources() returned %d entries, want 6", len(resources))
+	if len(resources) != 7 {
+		t.Fatalf("Resources() returned %d entries, want 7", len(resources))
 	}
 	wantResources := map[string]bool{
 		"coval_workspace": true,
@@ -135,6 +135,7 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 		"coval_persona":   true,
 		"coval_agent":     true,
 		"coval_metric":    true,
+		"coval_alert":     true,
 	}
 	for _, factory := range resources {
 		var response frameworkresource.MetadataResponse
@@ -146,8 +147,8 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 	}
 
 	dataSources := provider.DataSources(context.Background())
-	if len(dataSources) != 12 {
-		t.Fatalf("DataSources() returned %d entries, want 12", len(dataSources))
+	if len(dataSources) != 14 {
+		t.Fatalf("DataSources() returned %d entries, want 14", len(dataSources))
 	}
 	wantDataSources := map[string]bool{
 		"coval_workspace":  true,
@@ -162,6 +163,8 @@ func TestProviderRegistersResourceSurfaces(t *testing.T) {
 		"coval_agents":     true,
 		"coval_metric":     true,
 		"coval_metrics":    true,
+		"coval_alert":      true,
+		"coval_alerts":     true,
 	}
 	for _, factory := range dataSources {
 		var response frameworkdatasource.MetadataResponse

@@ -94,3 +94,32 @@ func TestListAllPersonasPaginates(t *testing.T) {
 		t.Fatalf("requests = %d, results = %#v", requestCount, results)
 	}
 }
+
+func TestListAllAlertsPaginates(t *testing.T) {
+	t.Parallel()
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requestCount++
+		response.Header().Set("Content-Type", "application/json")
+		switch request.URL.Query().Get("page_token") {
+		case "":
+			_, _ = fmt.Fprint(response, `{"alerts":[{"ulid":"01HZ0EXAMPLE00000000000000"}],"next_page_token":"page-2","total_count":2}`)
+		case "page-2":
+			_, _ = fmt.Fprint(response, `{"alerts":[{"ulid":"01HZ0EXAMPLE00000000000001"}],"next_page_token":null,"total_count":2}`)
+		default:
+			t.Errorf("unexpected page token %q", request.URL.Query().Get("page_token"))
+		}
+	}))
+	defer server.Close()
+	apiClient, err := client.New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	results, err := listAllAlerts(t.Context(), apiClient, client.ListAlertsOptions{PageSize: 100})
+	if err != nil {
+		t.Fatalf("listAllAlerts(): %v", err)
+	}
+	if requestCount != 2 || len(results) != 2 {
+		t.Fatalf("requests = %d, results = %#v", requestCount, results)
+	}
+}
