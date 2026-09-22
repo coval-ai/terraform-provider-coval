@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.8.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.7.0...v1.8.0) (2026-09-22)
+
+### Features
+
+* manage scheduled runs ([#15](https://github.com/coval-ai/terraform-provider-coval/issues/15)) ([f7e9713](https://github.com/coval-ai/terraform-provider-coval/commit/f7e97138ee416671b4dda7ee3866c963fc07da8c))
+
 ## [1.7.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.6.0...v1.7.0) (2026-09-22)
 
 ### Features
