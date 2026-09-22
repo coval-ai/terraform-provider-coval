@@ -22,7 +22,8 @@ func TestAlertLifecycleRequests(t *testing.T) {
 			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 				t.Fatal(err)
 			}
-			if body["name"] != "Low Resolution" || len(body["conditions"].([]any)) != 1 {
+			conditions, ok := body["conditions"].([]any)
+			if body["name"] != "Low Resolution" || !ok || len(conditions) != 1 {
 				t.Fatalf("create body = %#v", body)
 			}
 			_, _ = response.Write([]byte(alertTestResponse))
