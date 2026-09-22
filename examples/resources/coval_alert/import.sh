@@ -1,0 +1,1 @@
+terraform import coval_alert.low_resolution 01HZ0EXAMPLE00000000000000
