@@ -23,6 +23,12 @@ func TestAlertResourceSchemaProtectsChannelConfiguration(t *testing.T) {
 	if !ok || !channels.Optional || !channels.Computed || !channels.Sensitive {
 		t.Fatalf("channels must be optional, computed, and sensitive: %#v", channels)
 	}
+	for _, name := range []string{"agent_ids", "required_tags", "scheduled_run_ids"} {
+		attribute, ok := response.Schema.Attributes[name].(schema.SetAttribute)
+		if !ok || !attribute.Optional || !attribute.Computed || attribute.Default == nil {
+			t.Fatalf("%s must be optional with an empty-set default: %#v", name, attribute)
+		}
+	}
 }
 
 func TestAlertInputAndStateNormalizeServerIDs(t *testing.T) {

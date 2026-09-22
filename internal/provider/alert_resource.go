@@ -17,7 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/dynamicplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64default"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
@@ -68,10 +68,13 @@ func (r *alertResource) Metadata(_ context.Context, req resource.MetadataRequest
 }
 
 func (r *alertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
-	computedSet := func(description string) schema.SetAttribute {
+	optionalSet := func(description string) schema.SetAttribute {
 		return schema.SetAttribute{
-			MarkdownDescription: description, ElementType: types.StringType, Optional: true, Computed: true,
-			PlanModifiers: []planmodifier.Set{setplanmodifier.UseStateForUnknown()},
+			MarkdownDescription: description,
+			ElementType:         types.StringType,
+			Optional:            true,
+			Computed:            true,
+			Default:             setdefault.StaticValue(types.SetValueMust(types.StringType, nil)),
 		}
 	}
 	resp.Schema = schema.Schema{
@@ -87,9 +90,9 @@ func (r *alertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"match_mode":              schema.StringAttribute{MarkdownDescription: "How multiple conditions are combined.", Optional: true, Computed: true, Default: stringdefault.StaticString("ALL"), Validators: []validator.String{stringvalidator.OneOf("ALL", "ANY")}},
 			"cooldown_seconds":        schema.Int64Attribute{MarkdownDescription: "Minimum seconds between triggers.", Optional: true, Computed: true, Default: int64default.StaticInt64(0), Validators: []validator.Int64{int64validator.Between(0, 86400)}},
 			"custom_message_template": schema.StringAttribute{MarkdownDescription: "Optional custom notification message template.", Optional: true, Validators: []validator.String{stringvalidator.LengthAtMost(5000)}},
-			"agent_ids":               computedSet("Agent IDs to which the alert is restricted. Set [] to remove the restriction."),
-			"required_tags":           computedSet("Tags that matching runs must contain. Set [] to remove the restriction."),
-			"scheduled_run_ids":       computedSet("Scheduled-run IDs to which the alert is restricted. Set [] to remove the restriction."),
+			"agent_ids":               optionalSet("Agent IDs to which the alert is restricted. Set [] to remove the restriction."),
+			"required_tags":           optionalSet("Tags that matching runs must contain. Set [] to remove the restriction."),
+			"scheduled_run_ids":       optionalSet("Scheduled-run IDs to which the alert is restricted. Set [] to remove the restriction."),
 			"conditions": schema.DynamicAttribute{
 				MarkdownDescription: "Non-empty list of public API condition objects. Supported aggregations are SINGLE, RUN_AVERAGE, RUN_FRACTION, JOB_SUCCESS, and BASELINE_DEVIATION.",
 				Required:            true,
