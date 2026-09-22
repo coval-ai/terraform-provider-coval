@@ -313,11 +313,11 @@ func normalizeAlertArray(raw json.RawMessage) (json.RawMessage, error) {
 
 func alertState(ctx context.Context, remote client.Alert, prior *alertResourceModel) (alertResourceModel, diag.Diagnostics) {
 	var diagnostics diag.Diagnostics
-	agentIDs, agentDiagnostics := types.SetValueFrom(ctx, types.StringType, remote.AgentIDs)
+	agentIDs, agentDiagnostics := types.SetValueFrom(ctx, types.StringType, alertStringsOrEmpty(remote.AgentIDs))
 	diagnostics.Append(agentDiagnostics...)
-	requiredTags, tagDiagnostics := types.SetValueFrom(ctx, types.StringType, remote.RequiredTags)
+	requiredTags, tagDiagnostics := types.SetValueFrom(ctx, types.StringType, alertStringsOrEmpty(remote.RequiredTags))
 	diagnostics.Append(tagDiagnostics...)
-	scheduledRunIDs, scheduledDiagnostics := types.SetValueFrom(ctx, types.StringType, remote.ScheduledRunIDs)
+	scheduledRunIDs, scheduledDiagnostics := types.SetValueFrom(ctx, types.StringType, alertStringsOrEmpty(remote.ScheduledRunIDs))
 	diagnostics.Append(scheduledDiagnostics...)
 	conditionJSON, err := normalizeAlertArray(remote.Conditions)
 	if err != nil {
@@ -371,4 +371,11 @@ func alertStringSliceOrEmpty(value *[]string) []string {
 		return []string{}
 	}
 	return *value
+}
+
+func alertStringsOrEmpty(value []string) []string {
+	if value == nil {
+		return []string{}
+	}
+	return value
 }

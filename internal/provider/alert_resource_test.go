@@ -31,7 +31,7 @@ func TestAlertResourceSchemaProtectsChannelConfiguration(t *testing.T) {
 	}
 }
 
-func TestAlertInputAndStateNormalizeServerIDs(t *testing.T) {
+func TestAlertInputAndStateNormalizeCollections(t *testing.T) {
 	t.Parallel()
 	conditions := types.DynamicValue(types.TupleValueMust(
 		[]attr.Type{types.ObjectType{AttrTypes: map[string]attr.Type{"aggregation": types.StringType, "operator": types.StringType, "threshold_float": types.Float64Type}}},
@@ -51,12 +51,17 @@ func TestAlertInputAndStateNormalizeServerIDs(t *testing.T) {
 	state, diagnostics := alertState(t.Context(), client.Alert{
 		ID: "01HZ0EXAMPLE00000000000000", Name: "Low Resolution", Status: "ACTIVE", EvaluationType: "ON_RUN_COMPLETE", ConversationSource: "ALL", MatchMode: "ALL",
 		Conditions: json.RawMessage(`[{"ulid":"01HZ0CONDITION000000000000","aggregation":"RUN_AVERAGE","operator":"LT","threshold_float":0.9,"metric_id":null}]`), Channels: json.RawMessage(`[]`),
-		AgentIDs: []string{}, RequiredTags: []string{}, ScheduledRunIDs: []string{}, CreateTime: "2026-09-22T00:00:00Z", UpdateTime: "2026-09-22T00:00:00Z",
+		CreateTime: "2026-09-22T00:00:00Z", UpdateTime: "2026-09-22T00:00:00Z",
 	}, &plan)
 	if diagnostics.HasError() {
 		t.Fatalf("alertState() diagnostics = %v", diagnostics)
 	}
 	if state.WorkspaceID.ValueString() != "workspace-1" || !state.Conditions.Equal(conditions) {
 		t.Fatalf("state = %#v", state)
+	}
+	for name, value := range map[string]types.Set{"agent_ids": state.AgentIDs, "required_tags": state.RequiredTags, "scheduled_run_ids": state.ScheduledRunIDs} {
+		if value.IsNull() || len(value.Elements()) != 0 {
+			t.Fatalf("%s must normalize an omitted API value to an empty set: %#v", name, value)
+		}
 	}
 }
