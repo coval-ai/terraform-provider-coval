@@ -45,10 +45,17 @@ try {
     { devDependencies: { ...manifest.devDependencies, "semantic-release": "25.0.10" } },
     { scripts: { ...manifest.scripts, release: "semantic-release" } },
     { packageManager: "pnpm@latest" },
+    { release: { publish: { draftRelease: false } } },
   ]) {
     await reset();
     await writeFile(path.join(fixture, "package.json"), JSON.stringify({ ...manifest, ...patch }));
     await assert.rejects(validateReleaseContract(fixture));
+  }
+  for (const filename of [".releaserc", ".releaserc.js", "release.config.cjs"]) {
+    await reset();
+    await writeFile(path.join(fixture, filename), "Unexpected configuration must never execute");
+    await assert.rejects(validateReleaseContract(fixture));
+    await rm(path.join(fixture, filename));
   }
   await reset();
   await writeFile(path.join(fixture, "pnpm-workspace.yaml"), 'overrides:\n  conventional-changelog-writer: 9.2.1\n');

@@ -16,6 +16,9 @@ const dependencyPolicy = 'overrides:\n  conventional-changelog-writer: 9.2.1\n  
 export async function validateReleaseContract(root) {
   const config = JSON.parse(await readFile(path.join(root, ".releaserc.json"), "utf8"));
   const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  assert.ok(!Object.hasOwn(manifest, "release"), "Release configuration must exist only in .releaserc.json");
+  const configFiles = (await readdir(root)).filter((name) => /^\.releaserc(?:\..*)?$|^release\.config\.(?:js|cjs|mjs|ts)$/.test(name));
+  assert.deepEqual(configFiles, [".releaserc.json"], "Competing release configuration files are forbidden");
   assert.deepEqual(Object.keys(config).sort(), ["branches", "plugins", "tagFormat"]);
   assert.deepEqual(config.branches, ["main"]);
   assert.equal(config.tagFormat, "v${version}");
