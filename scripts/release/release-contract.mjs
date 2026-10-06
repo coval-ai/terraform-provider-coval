@@ -17,6 +17,13 @@ export async function validateReleaseContract(root) {
   const config = JSON.parse(await readFile(path.join(root, ".releaserc.json"), "utf8"));
   const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
   assert.ok(!Object.hasOwn(manifest, "release"), "Release configuration must exist only in .releaserc.json");
+  assert.ok(!Object.hasOwn(manifest, "cosmiconfig"), "Release discovery metadata is forbidden");
+  assert.ok(!(await readdir(root)).includes("package.yaml"), "Alternate package metadata is forbidden");
+  const nestedConfigFiles = await readdir(path.join(root, ".config")).catch((error) => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+  assert.ok(!nestedConfigFiles.some((name) => /^(?:releaserc(?:\..*)?|config\.(?:json|yaml|yml|js|ts|cjs|mjs))$/.test(name)), "Nested release/discovery configuration is forbidden");
   const configFiles = (await readdir(root)).filter((name) => /^\.releaserc(?:\..*)?$|^release\.config\.(?:js|cjs|mjs|ts)$/.test(name));
   assert.deepEqual(configFiles, [".releaserc.json"], "Competing release configuration files are forbidden");
   assert.deepEqual(Object.keys(config).sort(), ["branches", "plugins", "tagFormat"]);

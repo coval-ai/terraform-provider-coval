@@ -68,10 +68,21 @@ try {
     { scripts: { ...manifest.scripts, release: "semantic-release" } },
     { packageManager: "pnpm@latest" },
     { release: { publish: { draftRelease: false } } },
+    { cosmiconfig: { searchPlaces: ["unexpected.json"] } },
   ]) {
     await reset();
     await writeFile(path.join(fixture, "package.json"), JSON.stringify({ ...manifest, ...patch }));
     await assert.rejects(validateReleaseContract(fixture));
+  }
+  await reset();
+  await writeFile(path.join(fixture, "package.yaml"), "Unexpected package metadata");
+  await assert.rejects(validateReleaseContract(fixture));
+  await rm(path.join(fixture, "package.yaml"));
+  await mkdir(path.join(fixture, ".config"));
+  for (const filename of ["releaserc.json", "config.json"]) {
+    await writeFile(path.join(fixture, ".config", filename), "Unexpected nested configuration");
+    await assert.rejects(validateReleaseContract(fixture));
+    await rm(path.join(fixture, ".config", filename));
   }
   for (const filename of [".releaserc", ".releaserc.js", "release.config.cjs"]) {
     await reset();

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { validateReleaseContract } from "./release-contract.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+process.chdir(root);
 const args = process.argv.slice(2);
 if (args.length > 1 || (args.length === 1 && args[0] !== "--dry-run")) {
   throw new Error("Only --dry-run is supported; release configuration must come from the reviewed repository contract");
