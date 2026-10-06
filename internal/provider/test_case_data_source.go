@@ -109,7 +109,7 @@ func (d *testCaseDataSource) Configure(_ context.Context, req datasource.Configu
 }
 
 func (d *testCaseDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config testCaseResourceModel
+	var config testCaseDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -119,10 +119,15 @@ func (d *testCaseDataSource) Read(ctx context.Context, req datasource.ReadReques
 		resp.Diagnostics.AddError("Unable to read Coval test case", err.Error())
 		return
 	}
-	state, diagnostics := testCaseResourceState(ctx, remote, &config)
+	state, diagnostics := testCaseResourceState(ctx, remote, &config.testCaseResourceModel)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &testCaseDataSourceModel{testCaseResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type testCaseDataSourceModel struct {
+	testCaseResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

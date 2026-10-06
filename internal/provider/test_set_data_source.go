@@ -101,7 +101,7 @@ func (d *testSetDataSource) Configure(_ context.Context, req datasource.Configur
 }
 
 func (d *testSetDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config testSetResourceModel
+	var config testSetDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -111,10 +111,15 @@ func (d *testSetDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		resp.Diagnostics.AddError("Unable to read Coval test set", err.Error())
 		return
 	}
-	state, diagnostics := testSetDataSourceState(ctx, remote, &config)
+	state, diagnostics := testSetDataSourceState(ctx, remote, &config.testSetResourceModel)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &testSetDataSourceModel{testSetResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type testSetDataSourceModel struct {
+	testSetResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

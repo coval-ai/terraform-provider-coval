@@ -47,7 +47,6 @@ type testSetResourceModel struct {
 	TestCaseCount   types.Int64   `tfsdk:"test_case_count"`
 	Tags            types.Set     `tfsdk:"tags"`
 	CreateTime      types.String  `tfsdk:"create_time"`
-	UpdateTime      types.String  `tfsdk:"update_time"`
 }
 
 type testSetIdentityModel struct {
@@ -138,10 +137,6 @@ func (r *testSetResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"update_time": schema.StringAttribute{
-				MarkdownDescription: "RFC 3339 timestamp of the latest update.",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -159,7 +154,6 @@ func testSetTagValidators() []validator.Set {
 func (r *testSetResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	useStateForUnchangedPlan(ctx, req, resp,
 		path.Root("test_case_count"),
-		path.Root("update_time"),
 	)
 }
 
@@ -371,7 +365,6 @@ func testSetState(ctx context.Context, remote client.TestSet, prior *testSetReso
 		TestCaseCount:   types.Int64Null(),
 		Tags:            tags,
 		CreateTime:      types.StringValue(remote.CreateTime),
-		UpdateTime:      types.StringNull(),
 	}
 	if prior != nil {
 		state.WorkspaceID = prior.WorkspaceID
@@ -384,9 +377,6 @@ func testSetState(ctx context.Context, remote client.TestSet, prior *testSetReso
 	}
 	if remote.TestCaseCount != nil {
 		state.TestCaseCount = types.Int64Value(*remote.TestCaseCount)
-	}
-	if remote.UpdateTime != nil {
-		state.UpdateTime = types.StringValue(*remote.UpdateTime)
 	}
 	return state, diagnostics
 }

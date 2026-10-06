@@ -65,7 +65,7 @@ func (d *alertDataSource) Configure(_ context.Context, req datasource.ConfigureR
 }
 
 func (d *alertDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config alertResourceModel
+	var config alertDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -75,10 +75,15 @@ func (d *alertDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		resp.Diagnostics.AddError("Unable to read Coval alert", err.Error())
 		return
 	}
-	state, diagnostics := alertState(ctx, remote, &config)
+	state, diagnostics := alertState(ctx, remote, &config.alertResourceModel)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &alertDataSourceModel{alertResourceModel: state, UpdateTime: types.StringValue(remote.UpdateTime)})...)
+}
+
+type alertDataSourceModel struct {
+	alertResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

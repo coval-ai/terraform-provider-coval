@@ -62,7 +62,6 @@ resource "coval_alert" "low_resolution" {
 - `last_triggered_at` (String) RFC 3339 timestamp of the latest trigger when available.
 - `status` (String) Alert status.
 - `trigger_count` (Number) Number of times the alert has triggered.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 

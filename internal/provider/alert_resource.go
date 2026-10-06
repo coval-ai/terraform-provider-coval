@@ -29,7 +29,6 @@ var (
 	_ resource.ResourceWithConfigure   = &alertResource{}
 	_ resource.ResourceWithImportState = &alertResource{}
 	_ resource.ResourceWithIdentity    = &alertResource{}
-	_ resource.ResourceWithModifyPlan  = &alertResource{}
 )
 
 type alertResource struct{ client *client.Client }
@@ -53,7 +52,6 @@ type alertResourceModel struct {
 	TriggerCount          types.Int64   `tfsdk:"trigger_count"`
 	LastTriggeredAt       types.String  `tfsdk:"last_triggered_at"`
 	CreateTime            types.String  `tfsdk:"create_time"`
-	UpdateTime            types.String  `tfsdk:"update_time"`
 }
 
 type alertIdentityModel struct {
@@ -107,13 +105,8 @@ func (r *alertResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 			"trigger_count":     schema.Int64Attribute{MarkdownDescription: "Number of times the alert has triggered.", Computed: true},
 			"last_triggered_at": schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest trigger when available.", Computed: true},
 			"create_time":       schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"update_time":       schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest update.", Computed: true},
 		},
 	}
-}
-
-func (r *alertResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func (r *alertResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
@@ -346,7 +339,7 @@ func alertState(ctx context.Context, remote client.Alert, prior *alertResourceMo
 		Status: types.StringValue(remote.Status), EvaluationType: types.StringValue(remote.EvaluationType), ConversationSource: types.StringValue(remote.ConversationSource), MatchMode: types.StringValue(remote.MatchMode),
 		CooldownSeconds: types.Int64Value(remote.CooldownSeconds), CustomMessageTemplate: nullableString(remote.CustomMessageTemplate),
 		AgentIDs: agentIDs, RequiredTags: requiredTags, ScheduledRunIDs: scheduledRunIDs, Conditions: conditions, Channels: channels,
-		TriggerCount: types.Int64Value(remote.TriggerCount), LastTriggeredAt: nullableString(remote.LastTriggeredAt), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: types.StringValue(remote.UpdateTime),
+		TriggerCount: types.Int64Value(remote.TriggerCount), LastTriggeredAt: nullableString(remote.LastTriggeredAt), CreateTime: types.StringValue(remote.CreateTime),
 	}
 	if prior != nil {
 		state.WorkspaceID = prior.WorkspaceID

@@ -62,7 +62,6 @@ resource "coval_run_template" "regression" {
 - `created_by_user_id` (String) ID of the user who created the run template when available.
 - `id` (String) Server-assigned run-template ID.
 - `name` (String) Canonical API resource name.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 

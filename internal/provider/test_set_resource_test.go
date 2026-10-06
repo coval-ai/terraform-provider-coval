@@ -137,9 +137,6 @@ func TestTestSetResourceStateMapsPublicAPIResponse(t *testing.T) {
 	if got, want := state.CreateTime, types.StringValue(remote.CreateTime); !got.Equal(want) {
 		t.Errorf("create_time = %s, want %s", got, want)
 	}
-	if got, want := state.UpdateTime, types.StringValue(updateTime); !got.Equal(want) {
-		t.Errorf("update_time = %s, want %s", got, want)
-	}
 
 	tags, tagDiagnostics := types.SetValueFrom(t.Context(), types.StringType, remote.Tags)
 	if tagDiagnostics.HasError() {

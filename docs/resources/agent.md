@@ -54,7 +54,6 @@ resource "coval_agent" "support" {
 - `create_time` (String) RFC 3339 creation timestamp.
 - `id` (String) Server-assigned agent ID.
 - `knowledge_base_ids` (Set of String) Knowledge-base entry IDs associated with the agent.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 

@@ -103,7 +103,7 @@ func (d *alertsDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 			ID: state.ID, Name: state.Name, Description: state.Description, Status: state.Status, EvaluationType: state.EvaluationType,
 			ConversationSource: state.ConversationSource, MatchMode: state.MatchMode, CooldownSeconds: state.CooldownSeconds, CustomMessageTemplate: state.CustomMessageTemplate,
 			AgentIDs: state.AgentIDs, RequiredTags: state.RequiredTags, ScheduledRunIDs: state.ScheduledRunIDs, TriggerCount: state.TriggerCount,
-			LastTriggeredAt: state.LastTriggeredAt, CreateTime: state.CreateTime, UpdateTime: state.UpdateTime,
+			LastTriggeredAt: state.LastTriggeredAt, CreateTime: state.CreateTime, UpdateTime: types.StringValue(remote.UpdateTime),
 		}
 	}
 	if resp.Diagnostics.HasError() {

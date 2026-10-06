@@ -83,7 +83,7 @@ func (d *metricDataSource) Configure(_ context.Context, req datasource.Configure
 }
 
 func (d *metricDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config metricResourceModel
+	var config metricDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -93,10 +93,15 @@ func (d *metricDataSource) Read(ctx context.Context, req datasource.ReadRequest,
 		resp.Diagnostics.AddError("Unable to read Coval metric", err.Error())
 		return
 	}
-	state, diagnostics := metricState(ctx, remote, &config)
+	state, diagnostics := metricState(ctx, remote, &config.metricResourceModel)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &metricDataSourceModel{metricResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type metricDataSourceModel struct {
+	metricResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

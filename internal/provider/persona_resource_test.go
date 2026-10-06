@@ -149,7 +149,7 @@ func TestPersonaStatePreservesNullableFields(t *testing.T) {
 	if state.InitializationParameters.IsNull() || state.InitializationParameters.IsUnknown() {
 		t.Fatal("initialization_parameters was not decoded")
 	}
-	if state.InterruptionRate.ValueString() != "NONE" || !state.UpdateTime.IsNull() {
+	if state.InterruptionRate.ValueString() != "NONE" {
 		t.Errorf("state = %#v", state)
 	}
 }

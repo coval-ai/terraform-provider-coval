@@ -68,7 +68,6 @@ resource "coval_persona" "support_customer" {
 - `create_time` (String) RFC 3339 creation timestamp.
 - `id` (String) Server-assigned persona ID.
 - `resource_name` (String) Canonical API resource name.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 <a id="nestedatt--audio_degradation"></a>
 ### Nested Schema for `audio_degradation`
