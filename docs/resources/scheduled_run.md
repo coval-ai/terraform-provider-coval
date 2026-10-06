@@ -46,7 +46,6 @@ resource "coval_scheduled_run" "nightly" {
 - `last_run_at` (String) RFC 3339 timestamp of the latest produced run when available.
 - `last_run_id` (String) ID of the latest produced run when available.
 - `name` (String) Canonical API resource name.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 

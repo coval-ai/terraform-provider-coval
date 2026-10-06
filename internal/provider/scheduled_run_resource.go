@@ -7,7 +7,6 @@ import (
 
 	"github.com/coval-ai/terraform-provider-coval/internal/client"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/identityschema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -24,7 +23,6 @@ var (
 	_ resource.ResourceWithConfigure   = &scheduledRunResource{}
 	_ resource.ResourceWithImportState = &scheduledRunResource{}
 	_ resource.ResourceWithIdentity    = &scheduledRunResource{}
-	_ resource.ResourceWithModifyPlan  = &scheduledRunResource{}
 )
 
 type scheduledRunResource struct{ client *client.Client }
@@ -41,7 +39,6 @@ type scheduledRunResourceModel struct {
 	LastRunAt          types.String `tfsdk:"last_run_at"`
 	LastRunID          types.String `tfsdk:"last_run_id"`
 	CreateTime         types.String `tfsdk:"create_time"`
-	UpdateTime         types.String `tfsdk:"update_time"`
 }
 
 type scheduledRunIdentityModel struct {
@@ -70,14 +67,10 @@ func (r *scheduledRunResource) Schema(_ context.Context, _ resource.SchemaReques
 			"last_run_at":         schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest produced run when available.", Computed: true},
 			"last_run_id":         schema.StringAttribute{MarkdownDescription: "ID of the latest produced run when available.", Computed: true},
 			"create_time":         schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"update_time":         schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest update.", Computed: true},
 		},
 	}
 }
 
-func (r *scheduledRunResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
-}
 func (r *scheduledRunResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
 	resp.IdentitySchema = identityschema.Schema{Attributes: map[string]identityschema.Attribute{"id": identityschema.StringAttribute{RequiredForImport: true}, "workspace_id": identityschema.StringAttribute{OptionalForImport: true}}}
 }
@@ -160,7 +153,7 @@ func scheduledRunInput(plan scheduledRunResourceModel) client.CreateScheduledRun
 	return client.CreateScheduledRunInput{DisplayName: plan.DisplayName.ValueString(), RunTemplateID: plan.RunTemplateID.ValueString(), ScheduleExpression: plan.ScheduleExpression.ValueString(), ScheduleTimezone: plan.ScheduleTimezone.ValueString(), Enabled: plan.Enabled.ValueBool()}
 }
 func scheduledRunState(remote client.ScheduledRun, prior *scheduledRunResourceModel) scheduledRunResourceModel {
-	state := scheduledRunResourceModel{ID: types.StringValue(remote.ID), WorkspaceID: types.StringNull(), Name: types.StringValue(remote.Name), DisplayName: types.StringValue(remote.DisplayName), RunTemplateID: types.StringValue(remote.RunTemplateID), ScheduleExpression: types.StringValue(remote.ScheduleExpression), ScheduleTimezone: types.StringValue(remote.ScheduleTimezone), Enabled: types.BoolValue(remote.Enabled), LastRunAt: nullableString(remote.LastRunAt), LastRunID: nullableString(remote.LastRunID), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: nullableString(remote.UpdateTime)}
+	state := scheduledRunResourceModel{ID: types.StringValue(remote.ID), WorkspaceID: types.StringNull(), Name: types.StringValue(remote.Name), DisplayName: types.StringValue(remote.DisplayName), RunTemplateID: types.StringValue(remote.RunTemplateID), ScheduleExpression: types.StringValue(remote.ScheduleExpression), ScheduleTimezone: types.StringValue(remote.ScheduleTimezone), Enabled: types.BoolValue(remote.Enabled), LastRunAt: nullableString(remote.LastRunAt), LastRunID: nullableString(remote.LastRunID), CreateTime: types.StringValue(remote.CreateTime)}
 	if prior != nil {
 		state.WorkspaceID = prior.WorkspaceID
 	}

@@ -15,7 +15,7 @@ import (
 
 func TestUnchangedResourcePlan(t *testing.T) {
 	t.Parallel()
-	for _, r := range []resource.Resource{newAgentResource(), newMetricResource(), newPersonaResource(), newTestCaseResource(), newTestSetResource()} {
+	for _, r := range []resource.Resource{newMetricResource(), newPersonaResource(), newTestSetResource()} {
 		var metadata resource.MetadataResponse
 		r.Metadata(t.Context(), resource.MetadataRequest{ProviderTypeName: "coval"}, &metadata)
 		t.Run(metadata.TypeName, func(t *testing.T) {
@@ -41,10 +41,7 @@ func TestUnchangedResourcePlan(t *testing.T) {
 				values[name] = tftypes.NewValue(typ, nil)
 			}
 			state := tfsdk.State{Schema: response.Schema, Raw: tftypes.NewValue(typ, values)}
-			if d := state.SetAttribute(t.Context(), path.Root("update_time"), types.StringValue("2026-01-01T00:00:00Z")); d.HasError() {
-				t.Fatal(d)
-			}
-			computed := []path.Path{path.Root("update_time")}
+			var computed []path.Path
 			switch metadata.TypeName {
 			case "coval_test_set":
 				if d := state.SetAttribute(t.Context(), path.Root("test_case_count"), types.Int64Value(3)); d.HasError() {
@@ -57,7 +54,7 @@ func TestUnchangedResourcePlan(t *testing.T) {
 				}
 				computed = append(computed, path.Root("audio_degradation").AtName("preset_version"))
 			}
-			for _, scenario := range []string{"unchanged", "edit", "create", "destroy", "known output", "unknown config"} {
+			for _, scenario := range []string{"unchanged", "edit", "create", "destroy", "unknown config"} {
 				t.Run(scenario, func(t *testing.T) {
 					plan := tfsdk.Plan(state)
 					config := tfsdk.Config{Schema: response.Schema, Raw: tftypes.NewValue(typ, values)}
@@ -85,10 +82,6 @@ func TestUnchangedResourcePlan(t *testing.T) {
 						prior.Raw = tftypes.NewValue(typ, nil)
 					case "destroy":
 						plan.Raw = tftypes.NewValue(typ, nil)
-					case "known output":
-						if d := plan.SetAttribute(t.Context(), path.Root("update_time"), types.StringValue("2026-02-01T00:00:00Z")); d.HasError() {
-							t.Fatal(d)
-						}
 					case "unknown config":
 						config.Raw = plan.Raw
 					}
@@ -129,7 +122,6 @@ func TestMetricPlanWithPartialRuntimeConfig(t *testing.T) {
 		"description": types.StringValue("Whether the issue was resolved"),
 		"metric_type": types.StringValue("METRIC_LLM_BINARY"),
 		"created_by":  types.StringValue("creator@example.com"),
-		"update_time": types.StringValue("2026-01-01T00:00:00Z"),
 		"runtime_config": types.ObjectValueMust(metricRuntimeConfigAttributeTypes, map[string]attr.Value{
 			"model_version": types.StringValue("example-model"), "thinking_enabled": types.BoolValue(true),
 		}),
@@ -202,7 +194,7 @@ func TestMetricPlanWithPartialRuntimeConfig(t *testing.T) {
 				return
 			}
 			plan := tfsdk.Plan{Schema: response.Schema, Raw: planned}
-			for _, name := range []string{"update_time", "current_version", "evaluation"} {
+			for _, name := range []string{"current_version", "evaluation"} {
 				var value attr.Value
 				if d := plan.GetAttribute(t.Context(), path.Root(name), &value); d.HasError() {
 					t.Fatal(d)

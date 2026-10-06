@@ -147,7 +147,7 @@ func (d *runTemplatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 			SubSampleSeed:   state.SubSampleSeed,
 			Tags:            state.Tags,
 			CreateTime:      state.CreateTime,
-			UpdateTime:      state.UpdateTime,
+			UpdateTime:      nullableString(remote.UpdateTime),
 			CreatedByUserID: state.CreatedByUserID,
 		}
 	}

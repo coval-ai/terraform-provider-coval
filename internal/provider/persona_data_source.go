@@ -53,7 +53,7 @@ func (d *personaDataSource) Configure(_ context.Context, req datasource.Configur
 }
 
 func (d *personaDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config personaResourceModel
+	var config personaDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -70,7 +70,7 @@ func (d *personaDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &personaDataSourceModel{personaResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
 }
 
 func personaComputedDataSourceAttributes() map[string]schema.Attribute {
@@ -116,4 +116,9 @@ func personaComputedDataSourceAttributes() map[string]schema.Attribute {
 			},
 		},
 	}
+}
+
+type personaDataSourceModel struct {
+	personaResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

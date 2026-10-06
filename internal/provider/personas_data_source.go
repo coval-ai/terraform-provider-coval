@@ -138,7 +138,7 @@ func (d *personasDataSource) Read(ctx context.Context, req datasource.ReadReques
 	for index, remote := range all {
 		state, diagnostics := personaState(ctx, remote)
 		resp.Diagnostics.Append(diagnostics...)
-		config.Personas[index] = personaSummaryState(state)
+		config.Personas[index] = personaSummaryState(state, nullableString(remote.UpdateTime))
 	}
 	if resp.Diagnostics.HasError() {
 		return
@@ -152,7 +152,7 @@ func personaSummaryDataSourceAttributes() map[string]schema.Attribute {
 	return attributes
 }
 
-func personaSummaryState(state personaResourceModel) personaSummaryModel {
+func personaSummaryState(state personaResourceModel, updateTime types.String) personaSummaryModel {
 	return personaSummaryModel{
 		ID:                      state.ID,
 		ResourceName:            state.ResourceName,
@@ -178,7 +178,7 @@ func personaSummaryState(state personaResourceModel) personaSummaryModel {
 		AudioDegradation:        state.AudioDegradation,
 		Tags:                    state.Tags,
 		CreateTime:              state.CreateTime,
-		UpdateTime:              state.UpdateTime,
+		UpdateTime:              updateTime,
 	}
 }
 

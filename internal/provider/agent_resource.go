@@ -28,7 +28,6 @@ var (
 	_ resource.ResourceWithConfigure   = &agentResource{}
 	_ resource.ResourceWithImportState = &agentResource{}
 	_ resource.ResourceWithIdentity    = &agentResource{}
-	_ resource.ResourceWithModifyPlan  = &agentResource{}
 )
 
 // Private state records only fields the API added to the submitted metadata.
@@ -72,7 +71,6 @@ type agentResourceModel struct {
 	KnowledgeBaseIDs types.Set     `tfsdk:"knowledge_base_ids"`
 	Tags             types.Set     `tfsdk:"tags"`
 	CreateTime       types.String  `tfsdk:"create_time"`
-	UpdateTime       types.String  `tfsdk:"update_time"`
 }
 
 type agentIdentityModel struct {
@@ -189,10 +187,6 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"update_time": schema.StringAttribute{
-				MarkdownDescription: "RFC 3339 timestamp of the latest update.",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -205,10 +199,6 @@ func agentTagValidators() []validator.Set {
 			stringvalidator.RegexMatches(regexp.MustCompile(`\S`), "must contain at least one non-whitespace character"),
 		),
 	}
-}
-
-func (r *agentResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func (r *agentResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
@@ -474,7 +464,6 @@ func agentState(ctx context.Context, remote client.Agent, prior *agentResourceMo
 		KnowledgeBaseIDs: knowledgeBaseIDs,
 		Tags:             tags,
 		CreateTime:       types.StringValue(remote.CreateTime),
-		UpdateTime:       nullableString(remote.UpdateTime),
 	}
 	if prior != nil {
 		state.WorkspaceID = prior.WorkspaceID

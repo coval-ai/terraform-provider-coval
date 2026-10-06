@@ -28,7 +28,6 @@ var (
 	_ resource.ResourceWithConfigure   = &runTemplateResource{}
 	_ resource.ResourceWithImportState = &runTemplateResource{}
 	_ resource.ResourceWithIdentity    = &runTemplateResource{}
-	_ resource.ResourceWithModifyPlan  = &runTemplateResource{}
 )
 
 type runTemplateResource struct {
@@ -53,7 +52,6 @@ type runTemplateResourceModel struct {
 	Metadata        types.Dynamic `tfsdk:"metadata"`
 	Tags            types.Set     `tfsdk:"tags"`
 	CreateTime      types.String  `tfsdk:"create_time"`
-	UpdateTime      types.String  `tfsdk:"update_time"`
 	CreatedByUserID types.String  `tfsdk:"created_by_user_id"`
 }
 
@@ -166,20 +164,12 @@ func (r *runTemplateResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"update_time": schema.StringAttribute{
-				MarkdownDescription: "RFC 3339 timestamp of the latest update.",
-				Computed:            true,
-			},
 			"created_by_user_id": schema.StringAttribute{
 				MarkdownDescription: "ID of the user who created the run template when available.",
 				Computed:            true,
 			},
 		},
 	}
-}
-
-func (r *runTemplateResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
-	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func (r *runTemplateResource) IdentitySchema(_ context.Context, _ resource.IdentitySchemaRequest, resp *resource.IdentitySchemaResponse) {
@@ -413,7 +403,6 @@ func runTemplateState(ctx context.Context, remote client.RunTemplate, prior *run
 		Metadata:        metadata,
 		Tags:            tags,
 		CreateTime:      types.StringValue(remote.CreateTime),
-		UpdateTime:      nullableString(remote.UpdateTime),
 		CreatedByUserID: nullableString(remote.CreatedByUserID),
 	}
 	if prior != nil {
