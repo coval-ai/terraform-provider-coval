@@ -134,3 +134,47 @@ func TestListMetricsEncodesPublicFilters(t *testing.T) {
 }
 
 const metricTestEnvelope = `{"metric":{"name":"metrics/abc123def456ghi789jklm","id":"abc123def456ghi789jklm","metric_name":"Resolution","description":"Whether the issue was resolved","metric_type":"METRIC_LLM_BINARY","evaluation":null,"prompt":"Did the agent resolve the issue?","enabled_tools":null,"categories":null,"min_value":null,"max_value":null,"metadata_field_type":null,"metadata_field_key":null,"regex_pattern":null,"role":null,"min_pause_duration_seconds":null,"max_silence_duration_seconds":null,"min_silence_gap_seconds":null,"frequency_threshold":null,"direction":null,"success_sentiments":null,"percent_above":null,"success_end_reasons":null,"observation_name":null,"expected_body":null,"match_path":null,"min_volume_change_for_pitch_misalignment":null,"threshold":null,"operator":null,"ivr_flow":null,"sql_query":null,"criteria_source":null,"criteria_path":null,"criteria":null,"reporting_method":null,"base_prompt_template":null,"include_traces":null,"runtime_config":null,"target_condition":null,"tags":[],"created_by":null,"create_time":"2026-09-18T00:00:00Z","update_time":null,"current_version":null}}`
+
+func TestAgenticJudgeLifecycleRequests(t *testing.T) {
+	t.Parallel()
+	mode := "AGENTIC"
+	tools := []string{}
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		var body map[string]json.RawMessage
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Error(err)
+			response.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if string(body["judge_mode"]) != `"AGENTIC"` || string(body["enabled_tools"]) != `[]` {
+			t.Errorf("request body = %s", body)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"metric":{"id":"example-metric","metric_type":"METRIC_AGENT_JUDGE","judge_mode":"AGENTIC","enabled_tools":[]}}`))
+	}))
+	defer server.Close()
+	apiClient, err := New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := CreateMetricInput{MetricName: "Resolution", Description: "Evaluates resolution", MetricType: "METRIC_LLM_BINARY", JudgeMode: &mode, EnabledTools: &tools}
+	created, err := apiClient.CreateMetric(t.Context(), input)
+	if err != nil || created.JudgeMode == nil || *created.JudgeMode != mode {
+		t.Fatalf("create = %#v, %v", created, err)
+	}
+	updated, err := apiClient.UpdateMetric(t.Context(), created.ID, UpdateMetricInput{CreateMetricInput: input})
+	if err != nil || updated.JudgeMode == nil || *updated.JudgeMode != mode {
+		t.Fatalf("update = %#v, %v", updated, err)
+	}
+	omitted, err := json.Marshal(CreateMetricInput{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(omitted, &body); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := body["judge_mode"]; exists {
+		t.Fatalf("omitted judge_mode was sent: %s", omitted)
+	}
+}
