@@ -28,6 +28,12 @@ try {
   const discovered = await getConfig({ cwd: discoveryFixture, env: {}, logger: { log() {}, warn() {}, error() {}, success() {} } }, structuredClone(reviewedConfig));
   assert.equal(discovered.options.plugins.find(([name]) => name === "@semantic-release/github")[1].draftRelease, false);
   await assert.rejects(validateReleaseContract(discoveryFixture), /only in \.releaserc\.json/);
+  delete discoveryManifest.release;
+  await writeFile(path.join(discoveryFixture, "package.json"), JSON.stringify(discoveryManifest));
+  await writeFile(path.join(discoveryFixture, ".releaserc"), JSON.stringify({ publish: { draftRelease: false } }));
+  const competing = await getConfig({ cwd: discoveryFixture, env: {}, logger: { log() {}, warn() {}, error() {}, success() {} } }, structuredClone(reviewedConfig));
+  assert.equal(competing.options.plugins.find(([name]) => name === "@semantic-release/github")[1].draftRelease, false);
+  await assert.rejects(validateReleaseContract(discoveryFixture), /Competing release configuration/);
 } finally {
   await rm(discoveryFixture, { recursive: true, force: true });
 }
