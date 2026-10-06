@@ -48,6 +48,7 @@ data "coval_metric" "resolution" {
 - `frequency_threshold` (Number) Audio frequency threshold.
 - `include_traces` (Boolean) Whether trace context is included.
 - `ivr_flow` (Dynamic) IVR flow JSON object.
+- `judge_mode` (String) LLM Judge execution mode: STANDARD or AGENTIC.
 - `match_path` (String) Expected-body match path.
 - `max_silence_duration_seconds` (Number) Maximum silence duration.
 - `max_value` (Number) Maximum score.

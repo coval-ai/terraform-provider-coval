@@ -56,6 +56,7 @@ Read-Only:
 - `frequency_threshold` (Number)
 - `id` (String)
 - `include_traces` (Boolean)
+- `judge_mode` (String)
 - `match_path` (String)
 - `max_silence_duration_seconds` (Number)
 - `max_value` (Number)

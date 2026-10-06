@@ -45,6 +45,7 @@ type Metric struct {
 	MetricName                          string                 `json:"metric_name"`
 	Description                         string                 `json:"description"`
 	MetricType                          string                 `json:"metric_type"`
+	JudgeMode                           *string                `json:"judge_mode,omitempty"`
 	Evaluation                          *MetricEvaluation      `json:"evaluation"`
 	Prompt                              *string                `json:"prompt"`
 	EnabledTools                        *[]string              `json:"enabled_tools"`
@@ -93,6 +94,7 @@ type CreateMetricInput struct {
 	MetricName                          string                 `json:"metric_name"`
 	Description                         string                 `json:"description"`
 	MetricType                          string                 `json:"metric_type"`
+	JudgeMode                           *string                `json:"judge_mode,omitempty"`
 	Prompt                              *string                `json:"prompt,omitempty"`
 	EnabledTools                        *[]string              `json:"enabled_tools,omitempty"`
 	Categories                          *[]string              `json:"categories,omitempty"`

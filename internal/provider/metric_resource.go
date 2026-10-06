@@ -39,7 +39,7 @@ var (
 )
 
 var metricTypes = []string{
-	"METRIC_AGENT_JUDGE", "METRIC_LLM_BINARY", "METRIC_CATEGORICAL", "METRIC_NUMERICAL_LLM_JUDGE",
+	"METRIC_AGENT_JUDGE", "METRIC_AGENT_JUDGE_CATEGORICAL", "METRIC_AGENT_JUDGE_NUMERICAL", "METRIC_LLM_BINARY", "METRIC_CATEGORICAL", "METRIC_NUMERICAL_LLM_JUDGE",
 	"METRIC_AUDIO_LLM_BINARY", "METRIC_AUDIO_LLM_CATEGORICAL", "METRIC_AUDIO_LLM_NUMERICAL",
 	"METRIC_TOOLCALL", "METRIC_METADATA_FIELD", "METRIC_TRANSCRIPT_REGEX", "METRIC_PAUSE_ANALYSIS",
 	"METRIC_SQL_FLOAT", "METRIC_COMPOSITE_EVALUATION", "METRIC_CUSTOM_AGENT_FAILS_TO_RESPOND",
@@ -84,6 +84,7 @@ type metricResourceModel struct {
 	MetricName                          types.String  `tfsdk:"metric_name"`
 	Description                         types.String  `tfsdk:"description"`
 	MetricType                          types.String  `tfsdk:"metric_type"`
+	JudgeMode                           types.String  `tfsdk:"judge_mode"`
 	Evaluation                          types.Object  `tfsdk:"evaluation"`
 	Prompt                              types.String  `tfsdk:"prompt"`
 	EnabledTools                        types.Set     `tfsdk:"enabled_tools"`
@@ -158,6 +159,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"metric_name":                  schema.StringAttribute{MarkdownDescription: "Human-readable metric name.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 200)}},
 			"description":                  schema.StringAttribute{MarkdownDescription: "Metric description.", Required: true, Validators: []validator.String{stringvalidator.LengthBetween(1, 1000)}},
 			"metric_type":                  schema.StringAttribute{MarkdownDescription: "Metric evaluation type.", Required: true, Validators: []validator.String{stringvalidator.OneOf(metricTypes...)}},
+			"judge_mode":                   schema.StringAttribute{MarkdownDescription: "LLM Judge execution mode: STANDARD or AGENTIC. Agentic mode is available for text LLM Judges only. Omit to use the API default on creation and preserve the existing mode on update.", Optional: true, Computed: true, Validators: []validator.String{stringvalidator.OneOf("STANDARD", "AGENTIC")}},
 			"evaluation":                   metricEvaluationSchema(),
 			"prompt":                       optionalString("LLM evaluation prompt."),
 			"enabled_tools":                optionalSet("Evidence tools available to an Agent Judge metric. Set [] to disable every tool.", setvalidator.ValueStringsAre(stringvalidator.OneOf("get_transcript", "search_transcript", "search_transcript_regex", "get_trace_spans", "query_simulation_frames", "get_run_context"))),
@@ -244,6 +246,7 @@ func currentMetricVersionSchema() schema.SingleNestedAttribute {
 
 func (r *metricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	useStateForUnchangedPlan(ctx, req, resp,
+		path.Root("judge_mode"),
 		path.Root("created_by"),
 		path.Root("evaluation"),
 		path.Root("update_time"),
@@ -387,7 +390,7 @@ func metricInput(ctx context.Context, plan metricResourceModel) (client.CreateMe
 	diagnostics.Append(d...)
 	return client.CreateMetricInput{
 		MetricName: plan.MetricName.ValueString(), Description: plan.Description.ValueString(), MetricType: plan.MetricType.ValueString(),
-		Prompt: stringPointer(plan.Prompt), EnabledTools: set(plan.EnabledTools), Categories: set(plan.Categories),
+		JudgeMode: stringPointer(plan.JudgeMode), Prompt: stringPointer(plan.Prompt), EnabledTools: set(plan.EnabledTools), Categories: set(plan.Categories),
 		MinValue: floatPointer(plan.MinValue), MaxValue: floatPointer(plan.MaxValue), MetadataFieldType: stringPointer(plan.MetadataFieldType),
 		MetadataFieldKey: stringPointer(plan.MetadataFieldKey), RegexPattern: stringPointer(plan.RegexPattern), Role: stringPointer(plan.Role),
 		MinPauseDurationSeconds: floatPointer(plan.MinPauseDurationSeconds), MaxSilenceDurationSeconds: floatPointer(plan.MaxSilenceDurationSeconds),
@@ -528,7 +531,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 	}
 	state := metricResourceModel{
 		Name: types.StringValue(remote.Name), ID: types.StringValue(remote.ID), WorkspaceID: types.StringNull(), MetricName: types.StringValue(remote.MetricName),
-		Description: types.StringValue(remote.Description), MetricType: types.StringValue(remote.MetricType), Evaluation: metricEvaluationValue(remote.Evaluation),
+		Description: types.StringValue(remote.Description), MetricType: metricTypeState(remote, prior), JudgeMode: nullableString(remote.JudgeMode), Evaluation: metricEvaluationValue(remote.Evaluation),
 		Prompt: nullableString(remote.Prompt), EnabledTools: set(remote.EnabledTools), Categories: set(remote.Categories),
 		MinValue: nullableFloat(remote.MinValue), MaxValue: nullableFloat(remote.MaxValue), MetadataFieldType: nullableString(remote.MetadataFieldType),
 		MetadataFieldKey: nullableString(remote.MetadataFieldKey), RegexPattern: nullableString(remote.RegexPattern), Role: metricRoleState(remote.Role, prior),
@@ -549,6 +552,25 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		state.WorkspaceID = prior.WorkspaceID
 	}
 	return state, diagnostics
+}
+
+// metricTypeState preserves text judge types when the API returns their agentic equivalent.
+func metricTypeState(remote client.Metric, prior *metricResourceModel) types.String {
+	if prior != nil && remote.JudgeMode != nil && *remote.JudgeMode == "AGENTIC" {
+		var textType string
+		switch remote.MetricType {
+		case "METRIC_AGENT_JUDGE":
+			textType = "METRIC_LLM_BINARY"
+		case "METRIC_AGENT_JUDGE_CATEGORICAL":
+			textType = "METRIC_CATEGORICAL"
+		case "METRIC_AGENT_JUDGE_NUMERICAL":
+			textType = "METRIC_NUMERICAL_LLM_JUDGE"
+		}
+		if textType != "" && prior.MetricType.ValueString() == textType {
+			return prior.MetricType
+		}
+	}
+	return types.StringValue(remote.MetricType)
 }
 
 func priorMetricDynamic(prior *metricResourceModel, selectValue func(*metricResourceModel) types.Dynamic) types.Dynamic {
