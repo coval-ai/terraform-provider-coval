@@ -18,16 +18,14 @@ repository="${temporary_directory}/repository"
 remote_repository="${temporary_directory}/remote.git"
 git init --bare --quiet "${remote_repository}"
 git init --quiet --initial-branch=main "${repository}"
-git -C "${repository}" config user.name 'Release Test'
-git -C "${repository}" config user.email 'release-test@example.com'
 git -C "${repository}" config commit.gpgsign false
 git -C "${repository}" remote add origin "${remote_repository}"
 printf '# Changelog\n' > "${repository}/CHANGELOG.md"
 git -C "${repository}" add CHANGELOG.md
-git -C "${repository}" commit --quiet --message 'feat: initial feature'
+"${script_directory}/fixture-commit.sh" "${repository}" 'feat: initial feature'
 printf '# Changelog\n\n## 1.0.0\n' > "${repository}/CHANGELOG.md"
 git -C "${repository}" add CHANGELOG.md
-git -C "${repository}" commit --quiet --message 'chore(release): 1.0.0'
+"${script_directory}/fixture-commit.sh" "${repository}" 'chore(release): 1.0.0'
 release_sha="$(git -C "${repository}" rev-parse HEAD)"
 git -C "${repository}" push --quiet --set-upstream origin main
 
@@ -38,7 +36,7 @@ assert_fails env REPOSITORY_ROOT="${repository}" GITHUB_REF_NAME='v1.0.0-alpha.0
 
 printf 'unexpected\n' > "${repository}/README.md"
 git -C "${repository}" add README.md
-git -C "${repository}" commit --quiet --message 'chore(release): 1.0.1'
+"${script_directory}/fixture-commit.sh" "${repository}" 'chore(release): 1.0.1'
 extra_file_sha="$(git -C "${repository}" rev-parse HEAD)"
 git -C "${repository}" push --quiet origin main
 assert_fails env REPOSITORY_ROOT="${repository}" GITHUB_REF_NAME='v1.0.1' GITHUB_ACTOR='coval-release-automation[bot]' GITHUB_SHA="${extra_file_sha}" "${validator}"

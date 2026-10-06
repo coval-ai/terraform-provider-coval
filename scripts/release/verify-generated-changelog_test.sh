@@ -20,12 +20,10 @@ create_repository() {
 
   mkdir -p "${repository}"
   git -C "${repository}" init --quiet
-  git -C "${repository}" config user.name 'Release Test'
-  git -C "${repository}" config user.email 'release-test@example.com'
   git -C "${repository}" config commit.gpgsign false
   printf '# Changelog\n' > "${repository}/CHANGELOG.md"
   git -C "${repository}" add CHANGELOG.md
-  git -C "${repository}" commit --quiet --message 'initial changelog'
+  "${script_directory}/fixture-commit.sh" "${repository}" 'initial changelog'
 
   printf '%s\n' "${repository}"
 }

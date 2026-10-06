@@ -62,3 +62,5 @@ Unit tests need no credentials:
 ```shell
 go test ./...
 ```
+
+Release tooling uses pinned pnpm 11.28.5 on Node 22.22.3. Install with `pnpm install --frozen-lockfile --ignore-scripts` and run `pnpm test`. The version-scoped dependency policy removes the unused npm publishing plugin; the explicit six-plugin release contract is validated before any release hooks run. When upgrading semantic-release or changing plugins, review this policy and its negative tests together.
