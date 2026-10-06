@@ -73,7 +73,7 @@ func (d *runTemplateDataSource) Configure(_ context.Context, req datasource.Conf
 }
 
 func (d *runTemplateDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config runTemplateResourceModel
+	var config runTemplateDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -83,10 +83,15 @@ func (d *runTemplateDataSource) Read(ctx context.Context, req datasource.ReadReq
 		resp.Diagnostics.AddError("Unable to read Coval run template", err.Error())
 		return
 	}
-	state, diagnostics := runTemplateDataSourceState(ctx, remote, &config)
+	state, diagnostics := runTemplateDataSourceState(ctx, remote, &config.runTemplateResourceModel)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &runTemplateDataSourceModel{runTemplateResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type runTemplateDataSourceModel struct {
+	runTemplateResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

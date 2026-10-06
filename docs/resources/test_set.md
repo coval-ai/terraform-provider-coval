@@ -55,7 +55,6 @@ resource "coval_test_set" "support" {
 - `id` (String) Server-assigned test-set ID.
 - `name` (String) Canonical API resource name.
 - `test_case_count` (Number) Number of active test cases in the test set.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 

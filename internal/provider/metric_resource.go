@@ -124,7 +124,6 @@ type metricResourceModel struct {
 	Tags                                types.Set     `tfsdk:"tags"`
 	CreatedBy                           types.String  `tfsdk:"created_by"`
 	CreateTime                          types.String  `tfsdk:"create_time"`
-	UpdateTime                          types.String  `tfsdk:"update_time"`
 	CurrentVersion                      types.Object  `tfsdk:"current_version"`
 }
 
@@ -199,7 +198,6 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"tags":                 optionalSet("Tags associated with the metric. Set [] to clear them."),
 			"created_by":           schema.StringAttribute{MarkdownDescription: "Creator email returned by Coval.", Computed: true},
 			"create_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
-			"update_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 timestamp of the latest update.", Computed: true},
 			"current_version":      currentMetricVersionSchema(),
 		},
 	}
@@ -249,7 +247,6 @@ func (r *metricResource) ModifyPlan(ctx context.Context, req resource.ModifyPlan
 		path.Root("judge_mode"),
 		path.Root("created_by"),
 		path.Root("evaluation"),
-		path.Root("update_time"),
 		path.Root("current_version"),
 		path.Root("runtime_config").AtName("model_version"),
 		path.Root("runtime_config").AtName("thinking_enabled"),
@@ -545,7 +542,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		CriteriaSource: nullableString(remote.CriteriaSource), CriteriaPath: nullableString(remote.CriteriaPath), Criteria: set(remote.Criteria),
 		ReportingMethod: nullableString(remote.ReportingMethod), BasePromptTemplate: nullableString(remote.BasePromptTemplate),
 		IncludeTraces: nullableBool(remote.IncludeTraces), RuntimeConfig: runtimeConfigValue(remote.RuntimeConfig), TargetCondition: targetConditionValue(ctx, remote.TargetCondition, &diagnostics),
-		Tags: tags, CreatedBy: nullableString(remote.CreatedBy), CreateTime: types.StringValue(remote.CreateTime), UpdateTime: nullableString(remote.UpdateTime),
+		Tags: tags, CreatedBy: nullableString(remote.CreatedBy), CreateTime: types.StringValue(remote.CreateTime),
 		CurrentVersion: currentMetricVersionValue(remote.CurrentVersion),
 	}
 	if prior != nil {

@@ -289,9 +289,6 @@ func TestTestCaseResourceStateMapsPublicAPIResponse(t *testing.T) {
 	if got, want := state.CreateTime, types.StringValue(remote.CreateTime); !got.Equal(want) {
 		t.Errorf("create_time = %s, want %s", got, want)
 	}
-	if got, want := state.UpdateTime, types.StringValue(updateTime); !got.Equal(want) {
-		t.Errorf("update_time = %s, want %s", got, want)
-	}
 
 	behaviors, behaviorDiagnostics := types.ListValueFrom(t.Context(), types.StringType, expectedBehaviors)
 	if behaviorDiagnostics.HasError() {
@@ -359,7 +356,6 @@ func TestTestCaseResourceStateMapsAbsentOptionalFieldsToNull(t *testing.T) {
 		"input_type":         state.InputType,
 		"script_turns":       state.ScriptTurns,
 		"user_notes":         state.UserNotes,
-		"update_time":        state.UpdateTime,
 	} {
 		if !value.IsNull() {
 			t.Errorf("%s = %s, want null", name, value)

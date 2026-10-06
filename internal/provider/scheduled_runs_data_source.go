@@ -80,7 +80,7 @@ func (d *scheduledRunsDataSource) Read(ctx context.Context, req datasource.ReadR
 	config.ScheduledRuns = make([]scheduledRunSummaryModel, len(all))
 	for index, remote := range all {
 		state := scheduledRunState(remote, nil)
-		config.ScheduledRuns[index] = scheduledRunSummaryModel{Name: state.Name, ID: state.ID, DisplayName: state.DisplayName, RunTemplateID: state.RunTemplateID, ScheduleExpression: state.ScheduleExpression, ScheduleTimezone: state.ScheduleTimezone, Enabled: state.Enabled, LastRunAt: state.LastRunAt, LastRunID: state.LastRunID, CreateTime: state.CreateTime, UpdateTime: state.UpdateTime}
+		config.ScheduledRuns[index] = scheduledRunSummaryModel{Name: state.Name, ID: state.ID, DisplayName: state.DisplayName, RunTemplateID: state.RunTemplateID, ScheduleExpression: state.ScheduleExpression, ScheduleTimezone: state.ScheduleTimezone, Enabled: state.Enabled, LastRunAt: state.LastRunAt, LastRunID: state.LastRunID, CreateTime: state.CreateTime, UpdateTime: nullableString(remote.UpdateTime)}
 	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &config)...)
 }

@@ -47,7 +47,6 @@ type testCaseResourceModel struct {
 	MetricInput        types.Dynamic `tfsdk:"metric_input"`
 	UserNotes          types.String  `tfsdk:"user_notes"`
 	CreateTime         types.String  `tfsdk:"create_time"`
-	UpdateTime         types.String  `tfsdk:"update_time"`
 }
 
 type testCaseIdentityModel struct {
@@ -142,10 +141,6 @@ func (r *testCaseResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				MarkdownDescription: "RFC 3339 creation timestamp.",
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-			},
-			"update_time": schema.StringAttribute{
-				MarkdownDescription: "RFC 3339 timestamp of the latest update.",
-				Computed:            true,
 			},
 		},
 	}
@@ -249,7 +244,6 @@ func (r *testCaseResource) ModifyPlan(ctx context.Context, req resource.ModifyPl
 
 	plan = testCasePlanForConfig(config, plan)
 	resp.Diagnostics.Append(resp.Plan.Set(ctx, &plan)...)
-	useStateForUnchangedPlan(ctx, req, resp, path.Root("update_time"))
 }
 
 func testCasePlanForConfig(config testCaseResourceModel, plan testCaseResourceModel) testCaseResourceModel {
@@ -490,7 +484,6 @@ func testCaseResourceState(ctx context.Context, remote client.TestCase, prior *t
 		MetricInput:        metricInput,
 		UserNotes:          types.StringNull(),
 		CreateTime:         types.StringValue(remote.CreateTime),
-		UpdateTime:         types.StringNull(),
 	}
 	if prior != nil {
 		state.WorkspaceID = prior.WorkspaceID
@@ -506,9 +499,6 @@ func testCaseResourceState(ctx context.Context, remote client.TestCase, prior *t
 	}
 	if remote.UserNotes != nil {
 		state.UserNotes = types.StringValue(*remote.UserNotes)
-	}
-	if remote.UpdateTime != nil {
-		state.UpdateTime = types.StringValue(*remote.UpdateTime)
 	}
 	return state, diagnostics
 }

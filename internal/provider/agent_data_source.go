@@ -66,7 +66,7 @@ func (d *agentDataSource) Configure(_ context.Context, req datasource.ConfigureR
 }
 
 func (d *agentDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config agentResourceModel
+	var config agentDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -76,10 +76,15 @@ func (d *agentDataSource) Read(ctx context.Context, req datasource.ReadRequest, 
 		resp.Diagnostics.AddError("Unable to read Coval agent", err.Error())
 		return
 	}
-	state, diagnostics := agentState(ctx, remote, &config, false)
+	state, diagnostics := agentState(ctx, remote, &config.agentResourceModel, false)
 	resp.Diagnostics.Append(diagnostics...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &agentDataSourceModel{agentResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type agentDataSourceModel struct {
+	agentResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

@@ -75,7 +75,6 @@ type personaResourceModel struct {
 	AudioDegradation         types.Object  `tfsdk:"audio_degradation"`
 	Tags                     types.Set     `tfsdk:"tags"`
 	CreateTime               types.String  `tfsdk:"create_time"`
-	UpdateTime               types.String  `tfsdk:"update_time"`
 }
 
 type personaIdentityModel struct {
@@ -259,10 +258,6 @@ func (r *personaResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 				Computed:            true,
 				PlanModifiers:       []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
 			},
-			"update_time": schema.StringAttribute{
-				MarkdownDescription: "RFC 3339 timestamp of the latest update.",
-				Computed:            true,
-			},
 		},
 	}
 }
@@ -286,7 +281,6 @@ func personaTagFilterValidators() []validator.Set {
 
 func (r *personaResource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
 	useStateForUnchangedPlan(ctx, req, resp,
-		path.Root("update_time"),
 		path.Root("audio_degradation").AtName("preset_version"),
 	)
 }
@@ -572,7 +566,6 @@ func personaState(ctx context.Context, remote client.Persona) (personaResourceMo
 		AudioDegradation:         audioDegradation,
 		Tags:                     tags,
 		CreateTime:               types.StringValue(remote.CreateTime),
-		UpdateTime:               nullableString(remote.UpdateTime),
 	}
 	return state, diagnostics
 }

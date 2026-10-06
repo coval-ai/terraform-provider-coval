@@ -96,7 +96,6 @@ resource "coval_metric" "agentic_resolution" {
 - `evaluation` (Attributes) Read-only evaluator catalog metadata. (see [below for nested schema](#nestedatt--evaluation))
 - `id` (String) Server-assigned metric ID.
 - `name` (String) Canonical API resource name.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 <a id="nestedatt--runtime_config"></a>
 ### Nested Schema for `runtime_config`

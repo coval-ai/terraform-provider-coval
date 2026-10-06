@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
 var (
@@ -47,7 +48,7 @@ func (d *scheduledRunDataSource) Configure(_ context.Context, req datasource.Con
 	d.client = apiClient
 }
 func (d *scheduledRunDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var config scheduledRunResourceModel
+	var config scheduledRunDataSourceModel
 	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -57,6 +58,11 @@ func (d *scheduledRunDataSource) Read(ctx context.Context, req datasource.ReadRe
 		resp.Diagnostics.AddError("Unable to read Coval scheduled run", err.Error())
 		return
 	}
-	state := scheduledRunState(remote, &config)
-	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	state := scheduledRunState(remote, &config.scheduledRunResourceModel)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &scheduledRunDataSourceModel{scheduledRunResourceModel: state, UpdateTime: nullableString(remote.UpdateTime)})...)
+}
+
+type scheduledRunDataSourceModel struct {
+	scheduledRunResourceModel
+	UpdateTime types.String `tfsdk:"update_time"`
 }

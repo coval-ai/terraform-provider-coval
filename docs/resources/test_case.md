@@ -62,7 +62,6 @@ resource "coval_test_case" "refund_policy" {
 - `create_time` (String) RFC 3339 creation timestamp.
 - `id` (String) Server-assigned test-case ID.
 - `name` (String) Canonical API resource name.
-- `update_time` (String) RFC 3339 timestamp of the latest update.
 
 ## Import
 
