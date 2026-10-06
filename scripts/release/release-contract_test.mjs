@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -16,6 +16,22 @@ const loaded = await getConfig({ cwd: root, env: {}, logger: { log() {}, warn() 
 assert.deepEqual(loaded.options.plugins, reviewedConfig.plugins);
 assert.ok(Object.values(loaded.plugins).every((hook) => typeof hook === "function"));
 await assert.rejects(getConfig({ cwd: root, env: {}, logger: { log() {}, warn() {}, error() {}, success() {} } }, { ...reviewedConfig, plugins: null }), /@semantic-release\/npm/);
+// Reproduce the upstream package.json precedence gap, without invoking hooks.
+const discoveryFixture = await mkdtemp(path.join(os.tmpdir(), "release-discovery-"));
+try {
+  await cp(path.join(root, ".releaserc.json"), path.join(discoveryFixture, ".releaserc.json"));
+  await cp(path.join(root, "pnpm-workspace.yaml"), path.join(discoveryFixture, "pnpm-workspace.yaml"));
+  const discoveryManifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+  discoveryManifest.release = { publish: { draftRelease: false } };
+  await writeFile(path.join(discoveryFixture, "package.json"), JSON.stringify(discoveryManifest));
+  await symlink(path.join(root, "node_modules"), path.join(discoveryFixture, "node_modules"), "dir");
+  const discovered = await getConfig({ cwd: discoveryFixture, env: {}, logger: { log() {}, warn() {}, error() {}, success() {} } }, structuredClone(reviewedConfig));
+  assert.equal(discovered.options.plugins.find(([name]) => name === "@semantic-release/github")[1].draftRelease, false);
+  await assert.rejects(validateReleaseContract(discoveryFixture), /only in \.releaserc\.json/);
+} finally {
+  await rm(discoveryFixture, { recursive: true, force: true });
+}
+
 const fixture = await mkdtemp(path.join(os.tmpdir(), "release-contract-"));
 try {
   await mkdir(path.join(fixture, "node_modules", ".pnpm"), { recursive: true });
