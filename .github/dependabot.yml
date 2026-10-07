@@ -2,6 +2,8 @@ version: 2
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
+    cooldown:
+      default-days: 3
     schedule:
       interval: "daily"
     groups:
@@ -10,10 +12,14 @@ updates:
           - "github.com/hashicorp/terraform-plugin-*"
   - package-ecosystem: "gomod"
     directory: "/tools"
+    cooldown:
+      default-days: 3
     schedule:
       interval: "daily"
   - package-ecosystem: "npm"
     directory: "/"
+    cooldown:
+      default-days: 3
     schedule:
       interval: "weekly"
       day: "monday"
@@ -21,6 +27,8 @@ updates:
       timezone: "Etc/UTC"
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 3
     groups:
       "github-actions":
         patterns:
