@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.0.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.8.0...v2.0.0) (2026-10-08)
+
+### ⚠ BREAKING CHANGES
+
+* remove update_time from managed resources ([#18](https://github.com/coval-ai/terraform-provider-coval/issues/18))
+
+### Features
+
+* support agentic judges ([#16](https://github.com/coval-ai/terraform-provider-coval/issues/16)) ([6bfcc69](https://github.com/coval-ai/terraform-provider-coval/commit/6bfcc69ef7ca0bea1e3e4a4fca3c659164dda2d6))
+
+### Bug Fixes
+
+* remove update_time from managed resources ([#18](https://github.com/coval-ai/terraform-provider-coval/issues/18)) ([e73a139](https://github.com/coval-ai/terraform-provider-coval/commit/e73a139d7f754628b54eb6a396c1ff567e8d9979))
+
 ## [1.8.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.7.0...v1.8.0) (2026-09-22)
 
 ### Features
