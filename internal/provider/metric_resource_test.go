@@ -135,6 +135,80 @@ func TestCustomTraceMetricDurationRoundTrip(t *testing.T) {
 	}
 }
 
+func TestValidateCustomTraceMetricConfig(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		config    metricResourceModel
+		wantError bool
+	}{
+		{
+			name: "numeric attribute aggregation",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringValue("tokens"), AggregationMethod: types.StringValue("sum")},
+		},
+		{
+			name: "missing numeric attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("sum")},
+			wantError: true,
+		},
+		{
+			name: "duration aggregation omits attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("duration"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("average")},
+		},
+		{
+			name: "count aggregation omits attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("count")},
+		},
+		{
+			name: "error rate aggregation omits attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("error_rate")},
+		},
+		{
+			name: "success rate aggregation omits attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("success_rate")},
+		},
+		{
+			name: "missing span name",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue(""),
+				AggregationMethod: types.StringValue("count")},
+			wantError: true,
+		},
+		{
+			name: "missing aggregation",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				AggregationMethod: types.StringNull()},
+			wantError: true,
+		},
+		{
+			name: "invalid aggregation",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				AggregationMethod: types.StringValue("SUM")},
+			wantError: true,
+		},
+		{
+			name: "unknown values defer validation",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringUnknown(),
+				ValueSource: types.StringValue("attribute"), MetricAttribute: types.StringUnknown(), AggregationMethod: types.StringUnknown()},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			diagnostics := validateCustomTraceMetricConfig(test.config)
+			if diagnostics.HasError() != test.wantError {
+				t.Fatalf("diagnostics = %v, wantError = %v", diagnostics, test.wantError)
+			}
+		})
+	}
+}
+
 func TestMetricTargetConditionShapes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

@@ -31,11 +31,12 @@ import (
 )
 
 var (
-	_ resource.Resource                = &metricResource{}
-	_ resource.ResourceWithConfigure   = &metricResource{}
-	_ resource.ResourceWithImportState = &metricResource{}
-	_ resource.ResourceWithIdentity    = &metricResource{}
-	_ resource.ResourceWithModifyPlan  = &metricResource{}
+	_ resource.Resource                   = &metricResource{}
+	_ resource.ResourceWithConfigure      = &metricResource{}
+	_ resource.ResourceWithImportState    = &metricResource{}
+	_ resource.ResourceWithIdentity       = &metricResource{}
+	_ resource.ResourceWithModifyPlan     = &metricResource{}
+	_ resource.ResourceWithValidateConfig = &metricResource{}
 )
 
 var metricTypes = []string{
@@ -206,6 +207,60 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"create_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"current_version":      currentMetricVersionSchema(),
 		},
+	}
+}
+
+func (r *metricResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config metricResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateCustomTraceMetricConfig(config)...)
+}
+
+func validateCustomTraceMetricConfig(config metricResourceModel) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	if config.MetricType.IsNull() || config.MetricType.IsUnknown() || config.MetricType.ValueString() != "METRIC_CUSTOM_TRACE" {
+		return diagnostics
+	}
+
+	if !config.SpanName.IsUnknown() && (config.SpanName.IsNull() || config.SpanName.ValueString() == "") {
+		diagnostics.AddAttributeError(path.Root("span_name"), "Missing span name", "span_name must be a non-empty string for METRIC_CUSTOM_TRACE.")
+	}
+	if config.AggregationMethod.IsUnknown() {
+		return diagnostics
+	}
+	if config.AggregationMethod.IsNull() || config.AggregationMethod.ValueString() == "" {
+		diagnostics.AddAttributeError(path.Root("aggregation_method"), "Missing aggregation method", "aggregation_method must be set for METRIC_CUSTOM_TRACE.")
+		return diagnostics
+	}
+
+	method := config.AggregationMethod.ValueString()
+	if _, ok := customTraceAggregationMethods[method]; !ok {
+		diagnostics.AddAttributeError(path.Root("aggregation_method"), "Invalid custom trace aggregation method", "Use one of: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, or sum.")
+		return diagnostics
+	}
+	if config.ValueSource.IsUnknown() || config.ValueSource.IsNull() || config.ValueSource.ValueString() != "attribute" || !isNumericCustomTraceAggregation(method) {
+		return diagnostics
+	}
+	if !config.MetricAttribute.IsUnknown() && (config.MetricAttribute.IsNull() || config.MetricAttribute.ValueString() == "") {
+		diagnostics.AddAttributeError(path.Root("metric_attribute"), "Missing metric attribute", "metric_attribute must be set for numeric attribute aggregations.")
+	}
+	return diagnostics
+}
+
+var customTraceAggregationMethods = map[string]struct{}{
+	"average": {}, "count": {}, "error_rate": {}, "max": {}, "median": {}, "min": {},
+	"p90": {}, "p95": {}, "p99": {}, "success_rate": {}, "sum": {},
+}
+
+func isNumericCustomTraceAggregation(method string) bool {
+	switch method {
+	case "average", "max", "median", "min", "p90", "p95", "p99", "sum":
+		return true
+	default:
+		return false
 	}
 }
 
