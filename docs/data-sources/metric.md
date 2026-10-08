@@ -54,6 +54,7 @@ data "coval_metric" "resolution" {
 - `max_value` (Number) Maximum score.
 - `metadata_field_key` (String) Metadata field key.
 - `metadata_field_type` (String) Metadata field type.
+- `metric_attribute` (String) Span attribute key measured by a custom trace metric.
 - `metric_name` (String) Human-readable metric name.
 - `metric_type` (String) Metric evaluation type.
 - `min_pause_duration_seconds` (Number) Minimum pause duration.
@@ -69,6 +70,7 @@ data "coval_metric" "resolution" {
 - `reporting_method` (String) Composite reporting method.
 - `role` (String) Canonical speaker role.
 - `runtime_config` (Attributes) (see [below for nested schema](#nestedatt--runtime_config))
+- `span_name` (String) OpenTelemetry span name selected by a custom trace metric.
 - `sql_query` (String) SQL metric query.
 - `success_end_reasons` (Set of String) Successful end reasons.
 - `success_sentiments` (Set of String) Successful sentiments.
@@ -77,6 +79,7 @@ data "coval_metric" "resolution" {
 - `threshold` (Number) Integer threshold.
 - `unit` (String) Display unit for custom trace or SQL float values.
 - `update_time` (String) RFC 3339 update timestamp.
+- `value_source` (String) Custom trace value source: attribute or duration.
 
 <a id="nestedatt--current_version"></a>
 ### Nested Schema for `current_version`

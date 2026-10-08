@@ -72,6 +72,9 @@ type Metric struct {
 	Operator                            *string                `json:"operator"`
 	IVRFlow                             json.RawMessage        `json:"ivr_flow"`
 	SQLQuery                            *string                `json:"sql_query"`
+	SpanName                            *string                `json:"span_name"`
+	MetricAttribute                     *string                `json:"metric_attribute"`
+	ValueSource                         *string                `json:"value_source"`
 	AggregationMethod                   *string                `json:"aggregation_method"`
 	Unit                                *string                `json:"unit"`
 	CriteriaSource                      *string                `json:"criteria_source"`
@@ -120,6 +123,9 @@ type CreateMetricInput struct {
 	Operator                            *string                `json:"operator,omitempty"`
 	IVRFlow                             *json.RawMessage       `json:"ivr_flow,omitempty"`
 	SQLQuery                            *string                `json:"sql_query,omitempty"`
+	SpanName                            *string                `json:"span_name,omitempty"`
+	MetricAttribute                     *string                `json:"metric_attribute,omitempty"`
+	ValueSource                         *string                `json:"value_source,omitempty"`
 	AggregationMethod                   *string                `json:"aggregation_method,omitempty"`
 	Unit                                *string                `json:"unit,omitempty"`
 	CriteriaSource                      *string                `json:"criteria_source,omitempty"`

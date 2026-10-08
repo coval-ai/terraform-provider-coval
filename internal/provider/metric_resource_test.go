@@ -90,6 +90,51 @@ func TestSQLMetricAggregationAndUnitRoundTrip(t *testing.T) {
 	}
 }
 
+func TestCustomTraceMetricDurationRoundTrip(t *testing.T) {
+	t.Parallel()
+	var response resource.SchemaResponse
+	(&metricResource{}).Schema(t.Context(), resource.SchemaRequest{}, &response)
+	for _, name := range []string{"span_name", "metric_attribute", "value_source", "aggregation_method", "unit"} {
+		attribute, ok := response.Schema.Attributes[name].(schema.StringAttribute)
+		if !ok || !attribute.Optional || !attribute.Computed {
+			t.Fatalf("%s must be an optional, computed string", name)
+		}
+	}
+	spanName, valueSource, method, unit := "llm", "duration", "average", "s"
+	plan := metricResourceModel{
+		MetricName: types.StringValue("LLM Span Duration"), Description: types.StringValue("Average duration of selected LLM spans."),
+		MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue(spanName), ValueSource: types.StringValue(valueSource),
+		AggregationMethod: types.StringValue(method), Unit: types.StringValue(unit), MetricAttribute: types.StringNull(),
+		RuntimeConfig: types.ObjectNull(metricRuntimeConfigAttributeTypes), ExpectedBody: types.DynamicNull(), IVRFlow: types.DynamicNull(),
+		EnabledTools: types.SetNull(types.StringType), Categories: types.SetNull(types.StringType),
+		SuccessSentiments: types.SetNull(types.StringType), SuccessEndReasons: types.SetNull(types.StringType),
+		Criteria: types.SetNull(types.StringType), Tags: types.SetNull(types.StringType),
+	}
+	input, diagnostics := metricInput(t.Context(), plan)
+	if diagnostics.HasError() || input.SpanName == nil || *input.SpanName != spanName || input.MetricAttribute != nil || input.ValueSource == nil || *input.ValueSource != valueSource {
+		t.Fatalf("input = %#v, diagnostics = %v", input, diagnostics)
+	}
+	state, diagnostics := metricResourceState(t.Context(), client.Metric{
+		Name: "metrics/example-metric", ID: "example-metric", MetricName: "LLM Span Duration", Description: "Average duration of selected LLM spans.",
+		MetricType: "METRIC_CUSTOM_TRACE", SpanName: &spanName, ValueSource: &valueSource, AggregationMethod: &method, Unit: &unit,
+		Tags: []string{}, CreateTime: "2026-01-01T00:00:00Z",
+	}, &plan)
+	if diagnostics.HasError() || state.SpanName.ValueString() != spanName || state.ValueSource.ValueString() != valueSource || state.AggregationMethod.ValueString() != method || state.Unit.ValueString() != unit {
+		t.Fatalf("state = %#v, diagnostics = %v", state, diagnostics)
+	}
+	var listResponse datasource.SchemaResponse
+	(&metricsDataSource{}).Schema(t.Context(), datasource.SchemaRequest{}, &listResponse)
+	metrics, ok := listResponse.Schema.Attributes["metrics"].(datasourceSchema.ListNestedAttribute)
+	if !ok {
+		t.Fatalf("metrics has type %T, want datasource schema.ListNestedAttribute", listResponse.Schema.Attributes["metrics"])
+	}
+	for _, name := range []string{"span_name", "metric_attribute", "value_source"} {
+		if _, ok := metrics.NestedObject.Attributes[name]; !ok {
+			t.Errorf("coval_metrics is missing %s", name)
+		}
+	}
+}
+
 func TestMetricTargetConditionShapes(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

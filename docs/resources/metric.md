@@ -67,6 +67,7 @@ resource "coval_metric" "agentic_resolution" {
 - `max_value` (Number) Maximum score for numerical metrics.
 - `metadata_field_key` (String) Metadata key extracted by a metadata-field metric.
 - `metadata_field_type` (String) Data type for metadata-field extraction.
+- `metric_attribute` (String) Span attribute key measured by a custom trace metric.
 - `min_pause_duration_seconds` (Number) Minimum pause duration for pause-analysis metrics.
 - `min_silence_gap_seconds` (Number) Minimum gap between silence periods in seconds.
 - `min_value` (Number) Minimum score for numerical metrics.
@@ -79,6 +80,7 @@ resource "coval_metric" "agentic_resolution" {
 - `reporting_method` (String) How composite criterion verdicts are aggregated.
 - `role` (String) Speaker role filtered by a transcript-regex metric. The API normalizes user to persona and assistant to agent.
 - `runtime_config` (Attributes) LLM model and thinking configuration. Set an empty object to restore the platform default during an update. (see [below for nested schema](#nestedatt--runtime_config))
+- `span_name` (String) OpenTelemetry span name selected by a custom trace metric.
 - `sql_query` (String) SQL query used by a SQL float metric.
 - `success_end_reasons` (Set of String) Simulation end reasons that count as successful.
 - `success_sentiments` (Set of String) Sentiments that count as successful.
@@ -86,6 +88,7 @@ resource "coval_metric" "agentic_resolution" {
 - `target_condition` (Attributes) Rule that determines which metric output counts as a success. (see [below for nested schema](#nestedatt--target_condition))
 - `threshold` (Number) Integer threshold used by threshold-based metrics.
 - `unit` (String) Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.
+- `value_source` (String) Custom trace value source: attribute reads metric_attribute; duration measures span duration in seconds.
 - `workspace_id` (String) Workspace ID that owns this resource. Omit it to use the organization's active default workspace.
 
 ### Read-Only
