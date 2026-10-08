@@ -241,7 +241,7 @@ func validateCustomTraceMetricConfig(config metricResourceModel) diag.Diagnostic
 		diagnostics.AddAttributeError(path.Root("aggregation_method"), "Invalid custom trace aggregation method", "Use one of: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, or sum.")
 		return diagnostics
 	}
-	if config.ValueSource.IsUnknown() || config.ValueSource.IsNull() || config.ValueSource.ValueString() != "attribute" || !isNumericCustomTraceAggregation(method) {
+	if config.ValueSource.IsUnknown() || (!config.ValueSource.IsNull() && config.ValueSource.ValueString() != "attribute") || !isNumericCustomTraceAggregation(method) {
 		return diagnostics
 	}
 	if !config.MetricAttribute.IsUnknown() && (config.MetricAttribute.IsNull() || config.MetricAttribute.ValueString() == "") {

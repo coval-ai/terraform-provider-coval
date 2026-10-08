@@ -154,6 +154,12 @@ func TestValidateCustomTraceMetricConfig(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name: "omitted value source defaults to attribute",
+			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
+				ValueSource: types.StringNull(), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("sum")},
+			wantError: true,
+		},
+		{
 			name: "duration aggregation omits attribute",
 			config: metricResourceModel{MetricType: types.StringValue("METRIC_CUSTOM_TRACE"), SpanName: types.StringValue("llm"),
 				ValueSource: types.StringValue("duration"), MetricAttribute: types.StringNull(), AggregationMethod: types.StringValue("average")},
