@@ -4,6 +4,6 @@ resource "coval_metric" "llm_span_duration" {
   metric_type        = "METRIC_CUSTOM_TRACE"
   span_name          = "llm"
   value_source       = "duration"
-  aggregation_method = "AVERAGE"
+  aggregation_method = "average"
   unit               = "s"
 }

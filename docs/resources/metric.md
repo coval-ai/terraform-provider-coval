@@ -49,7 +49,7 @@ resource "coval_metric" "agentic_resolution" {
 
 ### Optional
 
-- `aggregation_method` (String) Aggregation method for custom trace values or a SQL float metric. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; the API defaults to AVERAGE.
+- `aggregation_method` (String) Aggregation method for a custom trace or SQL float metric. Custom trace methods are lowercase: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, and sum. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; SQL defaults to AVERAGE.
 - `base_prompt_template` (String) Custom per-criterion evaluation prompt template.
 - `categories` (Set of String) Classification categories for categorical metrics.
 - `criteria` (Set of String) Literal criteria for a composite-evaluation metric.

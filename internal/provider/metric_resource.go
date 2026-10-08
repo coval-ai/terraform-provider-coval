@@ -191,7 +191,7 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"span_name":            optionalString("OpenTelemetry span name selected by a custom trace metric.", stringvalidator.LengthAtMost(200)),
 			"metric_attribute":     optionalString("Span attribute key measured by a custom trace metric.", stringvalidator.LengthAtMost(200)),
 			"value_source":         optionalString("Custom trace value source: attribute reads metric_attribute; duration measures span duration in seconds.", stringvalidator.OneOf("attribute", "duration")),
-			"aggregation_method":   optionalString("Aggregation method for custom trace values or a SQL float metric. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; the API defaults to AVERAGE."),
+			"aggregation_method":   optionalString("Aggregation method for a custom trace or SQL float metric. Custom trace methods are lowercase: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, and sum. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; SQL defaults to AVERAGE."),
 			"unit":                 optionalString("Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.", stringvalidator.LengthAtMost(32)),
 			"criteria_source":      optionalString("Source used by a composite-evaluation metric.", stringvalidator.OneOf("test_case", "test_case_attribute", "metric_metadata")),
 			"criteria_path":        optionalString("Path to criteria on the selected source.", stringvalidator.LengthAtMost(200)),
