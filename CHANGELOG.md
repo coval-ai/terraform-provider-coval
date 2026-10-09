@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.0](https://github.com/coval-ai/terraform-provider-coval/compare/v2.0.0...v2.1.0) (2026-10-09)
+
+### Features
+
+* support custom trace metrics ([#20](https://github.com/coval-ai/terraform-provider-coval/issues/20)) ([46bae6c](https://github.com/coval-ai/terraform-provider-coval/commit/46bae6c7217098978331a143f126522a5d22e0d7))
+
 ## [2.0.0](https://github.com/coval-ai/terraform-provider-coval/compare/v1.8.0...v2.0.0) (2026-10-08)
 
 ### ⚠ BREAKING CHANGES
