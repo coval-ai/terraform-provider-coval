@@ -1,3 +1,7 @@
+minimumReleaseAge: 4320
+trustPolicy: no-downgrade
+saveExact: true
+engineStrict: true
 overrides:
   conventional-changelog-writer: 9.2.1
   "semantic-release@25.0.9>@semantic-release/npm": "-"
