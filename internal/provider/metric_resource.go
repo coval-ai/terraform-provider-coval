@@ -31,11 +31,12 @@ import (
 )
 
 var (
-	_ resource.Resource                = &metricResource{}
-	_ resource.ResourceWithConfigure   = &metricResource{}
-	_ resource.ResourceWithImportState = &metricResource{}
-	_ resource.ResourceWithIdentity    = &metricResource{}
-	_ resource.ResourceWithModifyPlan  = &metricResource{}
+	_ resource.Resource                   = &metricResource{}
+	_ resource.ResourceWithConfigure      = &metricResource{}
+	_ resource.ResourceWithImportState    = &metricResource{}
+	_ resource.ResourceWithIdentity       = &metricResource{}
+	_ resource.ResourceWithModifyPlan     = &metricResource{}
+	_ resource.ResourceWithValidateConfig = &metricResource{}
 )
 
 var metricTypes = []string{
@@ -45,7 +46,7 @@ var metricTypes = []string{
 	"METRIC_SQL_FLOAT", "METRIC_COMPOSITE_EVALUATION", "METRIC_CUSTOM_AGENT_FAILS_TO_RESPOND",
 	"METRIC_CUSTOM_AGENT_NEEDS_REPROMPTING", "METRIC_CUSTOM_AUDIO_FREQUENCY", "METRIC_CUSTOM_AUDIO_SENTIMENT",
 	"METRIC_CUSTOM_END_REASON", "METRIC_MATCH_EXPECTED_OUTPUT", "METRIC_SPEAKING_TIME_PERCENTAGE",
-	"METRIC_SPECTROGRAM_PITCH_ANALYSIS", "METRIC_VOLUME_PITCH_MISALIGNMENT", "METRIC_WORDS_PER_MESSAGE_WITH_THRESHOLD",
+	"METRIC_SPECTROGRAM_PITCH_ANALYSIS", "METRIC_VOLUME_PITCH_MISALIGNMENT", "METRIC_WORDS_PER_MESSAGE_WITH_THRESHOLD", "METRIC_CUSTOM_TRACE",
 }
 
 var metricRuntimeConfigAttributeTypes = map[string]attr.Type{
@@ -111,6 +112,9 @@ type metricResourceModel struct {
 	Operator                            types.String  `tfsdk:"operator"`
 	IVRFlow                             types.Dynamic `tfsdk:"ivr_flow"`
 	SQLQuery                            types.String  `tfsdk:"sql_query"`
+	SpanName                            types.String  `tfsdk:"span_name"`
+	MetricAttribute                     types.String  `tfsdk:"metric_attribute"`
+	ValueSource                         types.String  `tfsdk:"value_source"`
 	AggregationMethod                   types.String  `tfsdk:"aggregation_method"`
 	Unit                                types.String  `tfsdk:"unit"`
 	CriteriaSource                      types.String  `tfsdk:"criteria_source"`
@@ -185,7 +189,10 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"operator":             optionalString("Comparison operator used with threshold.", stringvalidator.OneOf("<", "<=", ">", ">=", "==", "!=")),
 			"ivr_flow":             schema.DynamicAttribute{MarkdownDescription: "IVR flow JSON object for IVR flow-adherence metrics.", Optional: true, Computed: true, PlanModifiers: []planmodifier.Dynamic{dynamicplanmodifier.UseStateForUnknown()}},
 			"sql_query":            optionalString("SQL query used by a SQL float metric.", stringvalidator.LengthAtMost(50000)),
-			"aggregation_method":   optionalString("Aggregation method for custom trace values or a SQL float metric. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; the API defaults to AVERAGE."),
+			"span_name":            optionalString("OpenTelemetry span name selected by a custom trace metric.", stringvalidator.LengthAtMost(200)),
+			"metric_attribute":     optionalString("Span attribute key measured by a custom trace metric.", stringvalidator.LengthAtMost(200)),
+			"value_source":         optionalString("Custom trace value source: attribute reads metric_attribute; duration measures span duration in seconds.", stringvalidator.OneOf("attribute", "duration")),
+			"aggregation_method":   optionalString("Aggregation method for a custom trace or SQL float metric. Custom trace methods are lowercase: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, and sum. SQL float methods are SUM, AVERAGE, MIN, MAX, and COUNT; SQL defaults to AVERAGE."),
 			"unit":                 optionalString("Display unit for custom trace or SQL float metric values. Use a supported result-unit identifier such as s, ms, count, or percent.", stringvalidator.LengthAtMost(32)),
 			"criteria_source":      optionalString("Source used by a composite-evaluation metric.", stringvalidator.OneOf("test_case", "test_case_attribute", "metric_metadata")),
 			"criteria_path":        optionalString("Path to criteria on the selected source.", stringvalidator.LengthAtMost(200)),
@@ -200,6 +207,60 @@ func (r *metricResource) Schema(_ context.Context, _ resource.SchemaRequest, res
 			"create_time":          schema.StringAttribute{MarkdownDescription: "RFC 3339 creation timestamp.", Computed: true, PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()}},
 			"current_version":      currentMetricVersionSchema(),
 		},
+	}
+}
+
+func (r *metricResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var config metricResourceModel
+	resp.Diagnostics.Append(req.Config.Get(ctx, &config)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateCustomTraceMetricConfig(config)...)
+}
+
+func validateCustomTraceMetricConfig(config metricResourceModel) diag.Diagnostics {
+	var diagnostics diag.Diagnostics
+	if config.MetricType.IsNull() || config.MetricType.IsUnknown() || config.MetricType.ValueString() != "METRIC_CUSTOM_TRACE" {
+		return diagnostics
+	}
+
+	if !config.SpanName.IsUnknown() && (config.SpanName.IsNull() || config.SpanName.ValueString() == "") {
+		diagnostics.AddAttributeError(path.Root("span_name"), "Missing span name", "span_name must be a non-empty string for METRIC_CUSTOM_TRACE.")
+	}
+	if config.AggregationMethod.IsUnknown() {
+		return diagnostics
+	}
+	if config.AggregationMethod.IsNull() || config.AggregationMethod.ValueString() == "" {
+		diagnostics.AddAttributeError(path.Root("aggregation_method"), "Missing aggregation method", "aggregation_method must be set for METRIC_CUSTOM_TRACE.")
+		return diagnostics
+	}
+
+	method := config.AggregationMethod.ValueString()
+	if _, ok := customTraceAggregationMethods[method]; !ok {
+		diagnostics.AddAttributeError(path.Root("aggregation_method"), "Invalid custom trace aggregation method", "Use one of: average, count, error_rate, max, median, min, p90, p95, p99, success_rate, or sum.")
+		return diagnostics
+	}
+	if config.ValueSource.IsUnknown() || (!config.ValueSource.IsNull() && config.ValueSource.ValueString() != "attribute") || !isNumericCustomTraceAggregation(method) {
+		return diagnostics
+	}
+	if !config.MetricAttribute.IsUnknown() && (config.MetricAttribute.IsNull() || config.MetricAttribute.ValueString() == "") {
+		diagnostics.AddAttributeError(path.Root("metric_attribute"), "Missing metric attribute", "metric_attribute must be set for numeric attribute aggregations.")
+	}
+	return diagnostics
+}
+
+var customTraceAggregationMethods = map[string]struct{}{
+	"average": {}, "count": {}, "error_rate": {}, "max": {}, "median": {}, "min": {},
+	"p90": {}, "p95": {}, "p99": {}, "success_rate": {}, "sum": {},
+}
+
+func isNumericCustomTraceAggregation(method string) bool {
+	switch method {
+	case "average", "max", "median", "min", "p90", "p95", "p99", "sum":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -396,6 +457,7 @@ func metricInput(ctx context.Context, plan metricResourceModel) (client.CreateMe
 		SuccessEndReasons: set(plan.SuccessEndReasons), ObservationName: stringPointer(plan.ObservationName), ExpectedBody: expectedBody,
 		MatchPath: stringPointer(plan.MatchPath), MinVolumeChangeForPitchMisalignment: floatPointer(plan.MinVolumeChangeForPitchMisalignment),
 		Threshold: intPointer(plan.Threshold), Operator: stringPointer(plan.Operator), IVRFlow: ivrFlow, SQLQuery: stringPointer(plan.SQLQuery),
+		SpanName: stringPointer(plan.SpanName), MetricAttribute: stringPointer(plan.MetricAttribute), ValueSource: stringPointer(plan.ValueSource),
 		AggregationMethod: stringPointer(plan.AggregationMethod), Unit: stringPointer(plan.Unit),
 		CriteriaSource: stringPointer(plan.CriteriaSource), CriteriaPath: stringPointer(plan.CriteriaPath), Criteria: set(plan.Criteria),
 		ReportingMethod: stringPointer(plan.ReportingMethod), BasePromptTemplate: stringPointer(plan.BasePromptTemplate),
@@ -538,6 +600,7 @@ func metricState(ctx context.Context, remote client.Metric, prior *metricResourc
 		SuccessEndReasons: set(remote.SuccessEndReasons), ObservationName: nullableString(remote.ObservationName), ExpectedBody: expectedBody,
 		MatchPath: nullableString(remote.MatchPath), MinVolumeChangeForPitchMisalignment: nullableFloat(remote.MinVolumeChangeForPitchMisalignment),
 		Threshold: nullableInt(remote.Threshold), Operator: nullableString(remote.Operator), IVRFlow: ivrFlow, SQLQuery: nullableString(remote.SQLQuery),
+		SpanName: nullableString(remote.SpanName), MetricAttribute: nullableString(remote.MetricAttribute), ValueSource: nullableString(remote.ValueSource),
 		AggregationMethod: nullableString(remote.AggregationMethod), Unit: nullableString(remote.Unit),
 		CriteriaSource: nullableString(remote.CriteriaSource), CriteriaPath: nullableString(remote.CriteriaPath), Criteria: set(remote.Criteria),
 		ReportingMethod: nullableString(remote.ReportingMethod), BasePromptTemplate: nullableString(remote.BasePromptTemplate),

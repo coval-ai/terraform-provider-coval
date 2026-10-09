@@ -109,6 +109,41 @@ func TestSQLMetricAggregationAndUnitRequests(t *testing.T) {
 	}
 }
 
+func TestCustomTraceMetricRequests(t *testing.T) {
+	t.Parallel()
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		requests++
+		var body map[string]any
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body["span_name"] != "llm" || body["value_source"] != "duration" || body["aggregation_method"] != "average" || body["unit"] != "s" {
+			t.Fatalf("%s body = %#v", request.Method, body)
+		}
+		response.Header().Set("Content-Type", "application/json")
+		_, _ = response.Write([]byte(`{"metric":{"id":"example-metric","span_name":"llm","value_source":"duration","aggregation_method":"average","unit":"s"}}`))
+	}))
+	defer server.Close()
+	apiClient, err := New("test-key", server.URL+"/v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spanName, valueSource, method, unit := "llm", "duration", "average", "s"
+	input := CreateMetricInput{MetricName: "LLM Span Duration", Description: "Average duration of selected LLM spans.", MetricType: "METRIC_CUSTOM_TRACE", SpanName: &spanName, ValueSource: &valueSource, AggregationMethod: &method, Unit: &unit}
+	created, err := apiClient.CreateMetric(t.Context(), input)
+	if err != nil || created.SpanName == nil || *created.SpanName != spanName || created.ValueSource == nil || *created.ValueSource != valueSource {
+		t.Fatalf("CreateMetric() = %#v, %v", created, err)
+	}
+	updated, err := apiClient.UpdateMetric(t.Context(), created.ID, UpdateMetricInput{CreateMetricInput: input})
+	if err != nil || updated.SpanName == nil || *updated.SpanName != spanName || updated.ValueSource == nil || *updated.ValueSource != valueSource {
+		t.Fatalf("UpdateMetric() = %#v, %v", updated, err)
+	}
+	if requests != 2 {
+		t.Fatalf("requests = %d, want 2", requests)
+	}
+}
+
 func TestListMetricsEncodesPublicFilters(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
