@@ -10,7 +10,7 @@ const pluginNames = [
   "@semantic-release/git",
   "@semantic-release/github",
 ];
-const dependencyPolicy = 'overrides:\n  conventional-changelog-writer: 9.2.1\n  "semantic-release@25.0.9>@semantic-release/npm": "-"\n';
+const dependencyPolicy = 'minimumReleaseAge: 4320\ntrustPolicy: no-downgrade\nsaveExact: true\nengineStrict: true\noverrides:\n  conventional-changelog-writer: 9.2.1\n  "semantic-release@25.0.9>@semantic-release/npm": "-"\n';
 
 // The removed plugin is safe only while releases use this explicit plugin contract.
 export async function validateReleaseContract(root) {
