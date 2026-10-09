@@ -6,25 +6,24 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import semanticRelease from "semantic-release";
+import { validateReleaseContract } from "./release-contract.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDirectory, "../..");
+await validateReleaseContract(repositoryRoot);
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), "semantic-release-test-"));
 const testRepository = path.join(temporaryRoot, "repository");
 const remoteRepository = path.join(temporaryRoot, "remote.git");
 
 function git(cwd, ...args) {
+  if (args[0] === "commit") {
+    return execFileSync(path.join(scriptDirectory, "fixture-commit.sh"), [cwd, args.at(-1)], { encoding: "utf8" }).trim();
+  }
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 }
 
 function testEnvironment() {
-  const environment = { ...process.env };
-  for (const name of Object.keys(environment)) {
-    if (name === "CI" || name.startsWith("GITHUB_")) {
-      delete environment[name];
-    }
-  }
-  return environment;
+  return Object.fromEntries(["PATH", "HOME", "TMPDIR", "LANG"].filter((name) => process.env[name]).map((name) => [name, process.env[name]]));
 }
 
 async function releaseConfig() {
@@ -57,8 +56,6 @@ try {
 
   git(temporaryRoot, "init", "--bare", "--quiet", "--initial-branch=main", remoteRepository);
   git(testRepository, "init", "--quiet", "--initial-branch=main");
-  git(testRepository, "config", "user.name", "Release Test");
-  git(testRepository, "config", "user.email", "release-test@example.com");
   git(testRepository, "config", "commit.gpgsign", "false");
   git(testRepository, "remote", "add", "origin", remoteRepository);
   git(testRepository, "add", ".gitignore", "CHANGELOG.md", "README.md", "scripts/release/verify-generated-changelog.sh");

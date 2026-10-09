@@ -6,9 +6,9 @@
     "node": "22.22.3"
   },
   "scripts": {
-    "test": "make automation-test && node scripts/release/semantic-release_test.mjs",
-    "release": "semantic-release",
-    "release:dry-run": "semantic-release --dry-run"
+    "test": "make automation-test && node scripts/release/release-contract_test.mjs && node scripts/release/semantic-release_test.mjs",
+    "release": "node scripts/release/run-release.mjs",
+    "release:dry-run": "node scripts/release/run-release.mjs --dry-run"
   },
   "devDependencies": {
     "@semantic-release/changelog": "7.0.0",
@@ -17,7 +17,5 @@
     "conventional-changelog-conventionalcommits": "10.4.0",
     "semantic-release": "25.0.9"
   },
-  "overrides": {
-    "conventional-changelog-writer": "9.2.1"
-  }
+  "packageManager": "pnpm@11.28.5"
 }

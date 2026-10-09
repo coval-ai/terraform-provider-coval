@@ -23,7 +23,7 @@ How to read a rule: every rule is binding within that precedence. A rule startin
 - Run `go vet ./...` before pushing.
 - Run `golangci-lint run` before pushing.
 - Run `goreleaser check` after changing `.goreleaser.yml` or `.github/workflows/release.yml`.
-- Run `npm ci --ignore-scripts` and `npm test` after changing release automation configuration or scripts.
+- Run `pnpm install --frozen-lockfile --ignore-scripts` and `pnpm test` after changing release automation configuration or scripts.
 - Run `make release-snapshot` after changing release packaging.
 
 ## Public API
