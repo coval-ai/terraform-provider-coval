@@ -65,6 +65,90 @@ func TestAgentResourceSchemaAndInput(t *testing.T) {
 	}
 }
 
+func TestAgentModelTypeValidation(t *testing.T) {
+	t.Parallel()
+
+	var response resource.SchemaResponse
+	(&agentResource{}).Schema(t.Context(), resource.SchemaRequest{}, &response)
+	modelType, ok := response.Schema.Attributes["model_type"].(schema.StringAttribute)
+	if !ok {
+		t.Fatalf("model_type has unexpected schema type %T", response.Schema.Attributes["model_type"])
+	}
+	for _, test := range []struct {
+		value string
+		valid bool
+	}{
+		{value: "MODEL_TYPE_SDK_WEBSOCKET", valid: true},
+		{value: "MODEL_TYPE_CHAT", valid: true},
+		{value: "MODEL_TYPE_UNSUPPORTED", valid: false},
+	} {
+		t.Run(test.value, func(t *testing.T) {
+			diagnostics := validateString(t.Context(), modelType.Validators, test.value)
+			if diagnostics.HasError() == test.valid {
+				t.Fatalf("model_type %q: valid = %t, diagnostics = %v", test.value, test.valid, diagnostics)
+			}
+		})
+	}
+}
+
+func TestSDKWebsocketAgentConfigurationRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	metadata := types.DynamicValue(types.ObjectValueMust(map[string]attr.Type{}, map[string]attr.Value{}))
+	plan := agentResourceModel{
+		DisplayName: types.StringValue("SDK Voice Agent"),
+		ModelType:   types.StringValue("MODEL_TYPE_SDK_WEBSOCKET"),
+		Metadata:    metadata,
+		MetricIDs:   types.SetNull(types.StringType),
+		TestSetIDs:  types.SetNull(types.StringType),
+		Tags:        types.SetNull(types.StringType),
+	}
+	input, diagnostics := createAgentInput(t.Context(), plan)
+	if diagnostics.HasError() {
+		t.Fatal(diagnostics)
+	}
+	body, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(body, &payload); err != nil {
+		t.Fatal(err)
+	}
+	if string(payload["model_type"]) != `"MODEL_TYPE_SDK_WEBSOCKET"` || string(payload["metadata"]) != `{}` {
+		t.Fatalf("create payload = %s", body)
+	}
+	if _, exists := payload["endpoint"]; exists {
+		t.Fatalf("create payload contains a customer endpoint: %s", body)
+	}
+
+	var remote client.Agent
+	if err := json.Unmarshal(body, &remote); err != nil {
+		t.Fatal(err)
+	}
+	remote.ID = "abc123def456ghi789jklm"
+	remote.CustomerAgentID = remote.ID
+	remote.Workflows = json.RawMessage(`{}`)
+	remote.CreateTime = "2026-10-27T00:00:00Z"
+	created, diagnostics := agentResourceStateAfterMutation(t.Context(), remote, &plan)
+	if diagnostics.HasError() {
+		t.Fatal(diagnostics)
+	}
+	for name, prior := range map[string]*agentResourceModel{"refresh": &created, "import": nil} {
+		t.Run(name, func(t *testing.T) {
+			state, diagnostics := agentResourceState(t.Context(), remote, prior)
+			if diagnostics.HasError() || state.ModelType.ValueString() != "MODEL_TYPE_SDK_WEBSOCKET" || !state.Metadata.Equal(metadata) || !state.Endpoint.IsNull() {
+				t.Fatalf("state = %#v, diagnostics = %v", state, diagnostics)
+			}
+			state.DisplayName = types.StringValue("Updated SDK Voice Agent")
+			update, diagnostics := updateAgentInput(t.Context(), state)
+			if diagnostics.HasError() || update.DisplayName != "Updated SDK Voice Agent" || update.ModelType != "MODEL_TYPE_SDK_WEBSOCKET" || string(update.Metadata) != `{}` || update.Endpoint != nil {
+				t.Fatalf("update = %#v, diagnostics = %v", update, diagnostics)
+			}
+		})
+	}
+}
+
 func TestAgentStatePreservesNullableAndJSONFields(t *testing.T) {
 	t.Parallel()
 
