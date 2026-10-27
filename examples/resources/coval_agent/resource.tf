@@ -9,3 +9,9 @@ resource "coval_agent" "support" {
 
   tags = ["support", "production"]
 }
+
+resource "coval_agent" "sdk" {
+  display_name = "SDK Voice Agent"
+  model_type   = "MODEL_TYPE_SDK_WEBSOCKET"
+  metadata     = {}
+}
