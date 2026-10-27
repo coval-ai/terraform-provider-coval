@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.1.1](https://github.com/coval-ai/terraform-provider-coval/compare/v2.1.0...v2.1.1) (2026-10-27)
+
+### Bug Fixes
+
+* **agent:** support sdk websocket agent configurations ([#24](https://github.com/coval-ai/terraform-provider-coval/issues/24)) ([ecde621](https://github.com/coval-ai/terraform-provider-coval/commit/ecde621b90beca5b666a1daba93f688de3508f28))
+
 ## [2.1.0](https://github.com/coval-ai/terraform-provider-coval/compare/v2.0.0...v2.1.0) (2026-10-09)
 
 ### Features
