@@ -42,6 +42,7 @@ var agentModelTypes = []string{
 	"MODEL_TYPE_SMS",
 	"MODEL_TYPE_WEBSOCKET",
 	"MODEL_TYPE_SDK_WEBSOCKET",
+	"MODEL_TYPE_SDK_CHAT",
 	"MODEL_TYPE_LIVEKIT",
 	"MODEL_TYPE_DAILY",
 	"MODEL_TYPE_OPENAI_REALTIME",
@@ -110,7 +111,7 @@ func (r *agentResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 				Validators:          []validator.String{stringvalidator.LengthBetween(1, 200)},
 			},
 			"model_type": schema.StringAttribute{
-				MarkdownDescription: "Agent simulator type. Use MODEL_TYPE_SDK_WEBSOCKET for a Coval Agent SDK agent; no customer endpoint is required.",
+				MarkdownDescription: "Agent simulator type. Use MODEL_TYPE_SDK_WEBSOCKET for a Coval Agent SDK voice agent or MODEL_TYPE_SDK_CHAT for a Coval Agent SDK text agent; no customer endpoint is required.",
 				Required:            true,
 				Validators:          []validator.String{stringvalidator.OneOf(agentModelTypes...)},
 			},

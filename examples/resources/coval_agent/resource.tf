@@ -15,3 +15,9 @@ resource "coval_agent" "sdk" {
   model_type   = "MODEL_TYPE_SDK_WEBSOCKET"
   metadata     = {}
 }
+
+resource "coval_agent" "sdk_chat" {
+  display_name = "SDK Text Agent"
+  model_type   = "MODEL_TYPE_SDK_CHAT"
+  metadata     = {}
+}
