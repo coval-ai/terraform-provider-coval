@@ -4,7 +4,7 @@ This repository's authoring extension to the [AGENTS.md standard](https://agents
 
 ## What goes in
 
-- Write the commands an agent runs before finishing, with exact flags. The standard says an agent executes listed checks and fixes failures before finishing, so a listed command is a command that gets run.
+- Give each validation command its scope and trigger, with exact flags. Require evidence for changed behavior and affected callers; do not require unrelated application suites for documentation-only work.
 - Write the boundaries: what an agent never does here, and what it asks before doing.
 - Write the public-repository safety rule when a mistake could expose credentials, customer data, private infrastructure, or non-public product details.
 - Write a convention or trap when an agent has got it wrong. Treat the file as living documentation.
@@ -13,7 +13,9 @@ This repository's authoring extension to the [AGENTS.md standard](https://agents
 ## Writing a rule
 
 - Phrase every rule as an instruction. "Implement only operations in the public API contract," not "The provider uses the public API."
-- Begin each rule with `Never`, `Ask first`, or the imperative verb of the action. `Never` means stop and name the rule to the user if the task appears to require it. `Ask first` means stop and ask before proceeding. Anything else is binding as written.
+- Use direct instructions with a concrete scope and reason. Reserve approval requirements for consequential actions or unresolved decisions, and recognize authorization already given by the user.
+- Distinguish draft publication from readiness to merge or deploy. Require truthful validation reports and fixes for introduced failures without making unrelated failures or unavailable environments a blanket push prohibition.
+- Check a proposed rule against routine edits, documentation-only changes, pre-existing failures, and already-authorized work before adding a new stop condition.
 - Name the check that enforces a `Never` rule, or say none exists yet.
 - Add the reason as a second sentence only if the rule is surprising without it.
 - Name files by path in backticks.

@@ -2,7 +2,7 @@
 
 Rules for any AI agent working in this repository, written to `AGENTS.meta.md`. Precedence follows the [AGENTS.md standard](https://agents.md/): the closest `AGENTS.md` wins within the tree, and an explicit instruction from the user overrides this file.
 
-How to read a rule: every rule is binding within that precedence. A rule starting `Never` means stop and name the rule to the user if the task appears to require it. A rule starting `Ask first` means stop and ask before proceeding. Any other rule is an imperative and is followed without being asked.
+Apply these rules within their stated scope and the user’s existing authorization. Ask for a missing decision or permission only when it is needed; do not request the same authorization again. A prohibited action calls for a compliant alternative where possible, and a clear explanation when it prevents completion.
 
 ## Before you start
 
@@ -16,6 +16,8 @@ How to read a rule: every rule is binding within that precedence. A rule startin
 
 ## Commands
 
+- Select checks for the files and behavior changed, including affected callers and the specific triggers below. Documentation-only changes need applicable documentation checks, not unrelated application suites. Report passed, failed, and unexecuted checks separately.
+- Publish requested branches and draft pull requests with accurate validation results. Investigate failures, fix those caused by the change, and report unrelated failures or unavailable checks without requiring a separate publication approval; preserve required CI, review, merge, and deployment gates.
 - Run `make fmt` before pushing.
 - Run `make generate` and review the resulting diff before pushing.
 - Run `make docs-validate` before pushing.
