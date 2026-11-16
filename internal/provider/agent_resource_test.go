@@ -79,6 +79,7 @@ func TestAgentModelTypeValidation(t *testing.T) {
 		valid bool
 	}{
 		{value: "MODEL_TYPE_SDK_WEBSOCKET", valid: true},
+		{value: "MODEL_TYPE_SDK_CHAT", valid: true},
 		{value: "MODEL_TYPE_CHAT", valid: true},
 		{value: "MODEL_TYPE_UNSUPPORTED", valid: false},
 	} {
