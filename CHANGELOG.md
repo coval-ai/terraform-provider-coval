@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.0](https://github.com/coval-ai/terraform-provider-coval/compare/v2.1.1...v2.2.0) (2026-11-16)
+
+### Features
+
+* **agent:** [COVAL-9228] support sdk chat agents ([#26](https://github.com/coval-ai/terraform-provider-coval/issues/26)) ([7ed9c4b](https://github.com/coval-ai/terraform-provider-coval/commit/7ed9c4bbf602abd59a7add567fe4631f0398c9e3))
+
 ## [2.1.1](https://github.com/coval-ai/terraform-provider-coval/compare/v2.1.0...v2.1.1) (2026-10-27)
 
 ### Bug Fixes
